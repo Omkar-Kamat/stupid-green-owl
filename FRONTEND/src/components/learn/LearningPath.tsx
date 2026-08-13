@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  DEFAULT_UNIT,
+  DEFAULT_SECTION,
+  QUESTIONS_PER_UNIT,
   unitProgressPercent,
-  type LessonNode,
+  type CourseSection,
   type Unit,
 } from "@/data/courseStructure";
 import {
-  activeLessonIndex,
-  getUnitProgressWithDemo,
-  lessonState,
+  activeUnitIndex,
+  getAllUnitProgressWithDemo,
+  unitNodeState,
   unitRingProgress,
   type UnitProgress,
 } from "@/lib/unitProgress";
@@ -20,63 +21,67 @@ const RING_RADIUS = 40;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export function LearningPath({
-  unit = DEFAULT_UNIT,
+  section = DEFAULT_SECTION,
 }: {
-  unit?: Unit;
+  section?: CourseSection;
 }) {
-  const [progress, setProgress] = useState<UnitProgress | null>(null);
+  const unitIds = section.units.map((u) => u.id);
+  const [progressByUnit, setProgressByUnit] = useState<
+    Record<string, UnitProgress>
+  >(() => getAllUnitProgressWithDemo(unitIds));
 
   useEffect(() => {
-    setProgress(getUnitProgressWithDemo(unit.id));
-  }, [unit.id]);
+    setProgressByUnit(getAllUnitProgressWithDemo(unitIds));
+  }, [unitIds.join(",")]);
 
-  const activeIndex = progress ? activeLessonIndex(progress) : 0;
-  const nextUnit = unit.unitNumber < 5 ? unit.unitNumber + 1 : null;
+  const activeIndex = activeUnitIndex(section.units, progressByUnit);
+  const activeUnit = section.units[activeIndex];
+  const activeProgress = activeUnit ? progressByUnit[activeUnit.id] : null;
 
   return (
     <div className="flex min-h-full flex-col">
-      <UnitBanner unit={unit} progress={progress} />
+      <UnitBanner
+        section={section}
+        activeUnit={activeUnit}
+        progress={activeProgress}
+      />
 
       <div className="relative mx-auto flex w-full max-w-[720px] justify-center px-4 pb-20 pt-16 sm:px-6">
         <div className="relative flex w-[260px] shrink-0 flex-col items-center gap-10">
-          {unit.lessons.map((lesson, index) => (
-            <div
-              key={lesson.id}
-              className="relative flex w-full justify-center"
-              style={{ transform: `translateX(${lesson.offset}px)` }}
-            >
-              {index === activeIndex && progress && (
-                <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-[13px] font-extrabold uppercase tracking-wider text-[#6b6b6b]">
-                  {index === 0 ? "Start" : "Continue"}
-                </span>
-              )}
-              <PathNode
-                lesson={lesson}
-                state={progress ? lessonState(progress, index) : index === 0 ? "active" : "locked"}
-                ringProgress={
-                  progress && lessonState(progress, index) === "active"
-                    ? unitRingProgress(progress, unit)
-                    : progress && lessonState(progress, index) === "complete"
-                      ? 100
-                      : 0
-                }
-              />
-            </div>
-          ))}
+          {section.units.map((unit, index) => {
+            const progress = progressByUnit[unit.id];
+            const state =
+              Object.keys(progressByUnit).length > 0
+                ? unitNodeState(section.units, index, progressByUnit)
+                : index === 0
+                  ? "active"
+                  : "locked";
 
-          {nextUnit && (
-            <div className="mt-4 w-full pt-6">
-              <div className="mb-10 flex items-center gap-4">
-                <div className="h-px flex-1 bg-[#37464f]" />
-                <span className="shrink-0 text-center text-[13px] font-extrabold uppercase tracking-wide text-[#52656d]">
-                  {unit.sectionNumber === 1 && nextUnit === 2
-                    ? "Describe people"
-                    : `Unit ${nextUnit}`}
-                </span>
-                <div className="h-px flex-1 bg-[#37464f]" />
+            return (
+              <div
+                key={unit.id}
+                className="relative flex w-full justify-center"
+                style={{ transform: `translateX(${unit.offset}px)` }}
+              >
+                {index === activeIndex && (
+                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-[13px] font-extrabold uppercase tracking-wider text-[#6b6b6b]">
+                    {index === 0 ? "Start" : "Continue"}
+                  </span>
+                )}
+                <UnitPathNode
+                  unit={unit}
+                  state={state}
+                  ringProgress={
+                    progress && state === "active"
+                      ? unitRingProgress(progress)
+                      : state === "complete"
+                        ? 100
+                        : 0
+                  }
+                />
               </div>
-            </div>
-          )}
+            );
+          })}
         </div>
 
         <div className="relative hidden w-[360px] shrink-0 sm:block">
@@ -96,12 +101,16 @@ export function LearningPath({
 }
 
 function UnitBanner({
-  unit,
+  section,
+  activeUnit,
   progress,
 }: {
-  unit: Unit;
+  section: CourseSection;
+  activeUnit?: Unit;
   progress: UnitProgress | null;
 }) {
+  if (!activeUnit) return null;
+
   const pct = progress
     ? Math.round(unitProgressPercent(progress.completedQuestions))
     : 0;
@@ -121,14 +130,15 @@ function UnitBanner({
                 className="h-4 w-4"
                 aria-hidden
               />
-              Section {unit.sectionNumber}, Unit {unit.unitNumber}
+              Section {section.number}, Unit {activeUnit.unitNumber}
             </p>
             <h2 className="mt-1 text-[22px] font-extrabold leading-tight text-white md:text-2xl">
-              {unit.title}
+              {activeUnit.title}
             </h2>
             {progress && (
               <p className="mt-1 text-[13px] font-bold text-white/70">
-                {progress.completedQuestions} / {unit.lessons.length * 10} questions · {pct}%
+                {progress.completedQuestions} / {QUESTIONS_PER_UNIT} questions · {pct}%
+                <span className="text-white/50"> · 4 parts × 10 questions</span>
               </p>
             )}
           </div>
@@ -153,21 +163,21 @@ function UnitBanner({
   );
 }
 
-function PathNode({
-  lesson,
+function UnitPathNode({
+  unit,
   state,
   ringProgress,
 }: {
-  lesson: LessonNode;
+  unit: Unit;
   state: "locked" | "active" | "complete";
   ringProgress: number;
 }) {
   const filled = (ringProgress / 100) * RING_CIRCUMFERENCE;
-  const href = state === "locked" ? undefined : "/lesson/listening/before";
+  const href = state === "locked" ? undefined : "/lesson";
 
   const buttonInner = (
     <>
-      {state === "active" && (
+      {(state === "active" || state === "complete") && (
         <svg
           className="absolute inset-0 h-full w-full -rotate-90"
           viewBox="0 0 88 88"
@@ -181,32 +191,28 @@ function PathNode({
             stroke="#37464f"
             strokeWidth="6"
           />
-          <circle
-            cx="44"
-            cy="44"
-            r={RING_RADIUS}
-            fill="none"
-            stroke="#6b6b6b"
-            strokeWidth="6"
-            strokeDasharray={`${filled} ${RING_CIRCUMFERENCE}`}
-            strokeLinecap="round"
-          />
-        </svg>
-      )}
-      {state === "complete" && (
-        <svg
-          className="absolute inset-0 h-full w-full -rotate-90"
-          viewBox="0 0 88 88"
-          aria-hidden="true"
-        >
-          <circle
-            cx="44"
-            cy="44"
-            r={RING_RADIUS}
-            fill="none"
-            stroke="#6b6b6b"
-            strokeWidth="6"
-          />
+          {state === "active" && (
+            <circle
+              cx="44"
+              cy="44"
+              r={RING_RADIUS}
+              fill="none"
+              stroke="#6b6b6b"
+              strokeWidth="6"
+              strokeDasharray={`${filled} ${RING_CIRCUMFERENCE}`}
+              strokeLinecap="round"
+            />
+          )}
+          {state === "complete" && (
+            <circle
+              cx="44"
+              cy="44"
+              r={RING_RADIUS}
+              fill="none"
+              stroke="#6b6b6b"
+              strokeWidth="6"
+            />
+          )}
         </svg>
       )}
       <span
@@ -218,11 +224,7 @@ function PathNode({
               : "border-[#2b3a40] bg-[#37464f] shadow-[0_4px_0_#2b3a40]"
         }`}
       >
-        {lesson.type === "star" || lesson.type === "start" ? (
-          <StarIcon muted={state === "locked"} />
-        ) : null}
-        {lesson.type === "chest" && <ChestIcon />}
-        {lesson.type === "trophy" && <TrophyIcon />}
+        <UnitNodeIcon type={unit.nodeType} muted={state === "locked"} />
       </span>
     </>
   );
@@ -231,7 +233,11 @@ function PathNode({
     return (
       <div className="relative flex h-[88px] w-[88px] items-center justify-center">
         {href ? (
-          <Link href={href} className="relative flex h-full w-full items-center justify-center" aria-label={lesson.title}>
+          <Link
+            href={href}
+            className="relative flex h-full w-full items-center justify-center"
+            aria-label={unit.title}
+          >
             {buttonInner}
           </Link>
         ) : (
@@ -246,15 +252,25 @@ function PathNode({
       type="button"
       disabled
       className="flex h-[70px] w-[70px] items-center justify-center rounded-full border-b-[6px] border-[#2b3a40] bg-[#37464f] shadow-[0_4px_0_#2b3a40]"
-      aria-label={`${lesson.title} (locked)`}
+      aria-label={`${unit.title} (locked)`}
     >
-      {lesson.type === "star" || lesson.type === "start" ? (
-        <StarIcon muted />
-      ) : null}
-      {lesson.type === "chest" && <ChestIcon />}
-      {lesson.type === "trophy" && <TrophyIcon />}
+      <UnitNodeIcon type={unit.nodeType} muted />
     </button>
   );
+}
+
+function UnitNodeIcon({
+  type,
+  muted = false,
+}: {
+  type: Unit["nodeType"];
+  muted?: boolean;
+}) {
+  if (type === "star" || type === "start") {
+    return <StarIcon muted={muted} />;
+  }
+  if (type === "chest") return <ChestIcon />;
+  return <TrophyIcon />;
 }
 
 function StarIcon({ muted = false }: { muted?: boolean }) {

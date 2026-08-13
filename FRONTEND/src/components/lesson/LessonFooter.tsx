@@ -20,10 +20,11 @@ export function LessonActionFooter({
   );
 }
 
-export function SkipButton() {
+export function SkipButton({ onClick }: { onClick?: () => void }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className="rounded-2xl border-2 border-b-4 border-[#52656d] bg-transparent px-6 py-3 text-[13px] font-extrabold uppercase tracking-wide text-[#52656d] transition-all hover:bg-white/5 active:border-b-2 active:translate-y-[2px]"
     >
       Skip
@@ -31,11 +32,18 @@ export function SkipButton() {
   );
 }
 
-export function CheckButton({ disabled = false }: { disabled?: boolean }) {
+export function CheckButton({
+  disabled = false,
+  onClick,
+}: {
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
   return (
     <button
       type="button"
       disabled={disabled}
+      onClick={onClick}
       className={`min-w-[150px] rounded-2xl px-8 py-3.5 text-[13px] font-extrabold uppercase tracking-wide transition-all ${
         disabled
           ? "cursor-not-allowed border-2 border-b-4 border-[#37464f] bg-[#37464f] text-[#52656d]"

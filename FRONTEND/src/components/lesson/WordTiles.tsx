@@ -1,13 +1,19 @@
+import type { ReactNode } from "react";
+
 export function JapaneseWordTile({
   romaji,
   japanese,
   empty = false,
   selected = false,
+  disabled = false,
+  onClick,
 }: {
   romaji?: string;
   japanese?: string;
   empty?: boolean;
   selected?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
 }) {
   if (empty) {
     return (
@@ -18,10 +24,12 @@ export function JapaneseWordTile({
   return (
     <button
       type="button"
-      className={`flex min-w-[72px] flex-col items-center justify-center rounded-xl border-2 border-b-4 px-4 py-2 transition-all active:border-b-2 active:translate-y-[2px] ${
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex min-w-[72px] flex-col items-center justify-center rounded-xl border-2 border-b-4 px-4 py-2 transition-all active:border-b-2 active:translate-y-[2px] disabled:cursor-default ${
         selected
           ? "border-[#52656d] bg-[#37464f] text-white"
-          : "border-[#52656d] bg-[#37464f] text-white hover:bg-[#3f5560]"
+          : "border-[#52656d] bg-[#37464f] text-white hover:bg-[#3f5560] disabled:hover:bg-[#37464f]"
       }`}
     >
       <span className="text-[11px] font-bold text-[#afafaf]">{romaji}</span>
@@ -33,9 +41,13 @@ export function JapaneseWordTile({
 export function EnglishWordTile({
   word,
   empty = false,
+  disabled = false,
+  onClick,
 }: {
   word?: string;
   empty?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
 }) {
   if (empty) {
     return (
@@ -46,14 +58,14 @@ export function EnglishWordTile({
   return (
     <button
       type="button"
-      className="rounded-xl border-2 border-b-4 border-[#52656d] bg-[#37464f] px-5 py-3 text-[15px] font-bold text-white transition-all hover:bg-[#3f5560] active:border-b-2 active:translate-y-[2px]"
+      disabled={disabled}
+      onClick={onClick}
+      className="rounded-xl border-2 border-b-4 border-[#52656d] bg-[#37464f] px-5 py-3 text-[15px] font-bold text-white transition-all hover:bg-[#3f5560] active:border-b-2 active:translate-y-[2px] disabled:cursor-default disabled:hover:bg-[#37464f]"
     >
       {word}
     </button>
   );
 }
-
-import type { ReactNode } from "react";
 
 export function AnswerLine({ children }: { children?: ReactNode }) {
   return (
@@ -67,7 +79,7 @@ export function AnswerLine({ children }: { children?: ReactNode }) {
   );
 }
 
-export function WordBank({ children }: { children: React.ReactNode }) {
+export function WordBank({ children }: { children: ReactNode }) {
   return (
     <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
       {children}

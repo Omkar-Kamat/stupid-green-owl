@@ -4,12 +4,16 @@ export function MultipleChoiceOption({
   japanese,
   selected = false,
   correct = false,
+  disabled = false,
+  onClick,
 }: {
   number: number;
   romaji: string;
   japanese: string;
   selected?: boolean;
   correct?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
 }) {
   const borderColor = correct
     ? "border-[#58cc02]"
@@ -21,7 +25,9 @@ export function MultipleChoiceOption({
   return (
     <button
       type="button"
-      className={`flex w-full max-w-[560px] items-center gap-4 rounded-2xl border-2 border-b-4 bg-[#202f36] px-5 py-4 text-left transition-all hover:bg-[#263740] active:border-b-2 active:translate-y-[2px] ${borderColor}`}
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex w-full max-w-[560px] items-center gap-4 rounded-2xl border-2 border-b-4 bg-[#202f36] px-5 py-4 text-left transition-all hover:bg-[#263740] active:border-b-2 active:translate-y-[2px] disabled:cursor-default disabled:hover:bg-[#202f36] ${borderColor}`}
     >
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-[#52656d] text-[13px] font-extrabold text-[#afafaf]">
         {number}

@@ -150,11 +150,11 @@ function HeartRefillIcon() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/illustrations/heart.svg"
+      src="https://d35aaqx5ub95lt.cloudfront.net/images/hearts/547ffcf0e6256af421ad1a32c26b8f1a.svg"
       alt=""
-      width={36}
-      height={36}
-      className="h-9 w-9"
+      width={64}
+      height={64}
+      className="h-16 w-16"
       aria-hidden
     />
   );
@@ -162,29 +162,15 @@ function HeartRefillIcon() {
 
 function UnlimitedHeartsIcon() {
   return (
-    <svg viewBox="0 0 48 48" className="h-10 w-10" aria-hidden="true">
-      <defs>
-        <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#58cc02" />
-          <stop offset="50%" stopColor="#1cb0f6" />
-          <stop offset="100%" stopColor="#ce82ff" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M24 38c-8-6-14-12-14-19a8 8 0 0114-4 8 8 0 0114 4c0 7-6 13-14 19z"
-        fill="url(#heartGrad)"
-      />
-      <text
-        x="24"
-        y="26"
-        textAnchor="middle"
-        fill="white"
-        fontSize="14"
-        fontWeight="bold"
-      >
-        ∞
-      </text>
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="https://d35aaqx5ub95lt.cloudfront.net/images/hearts/4f3842c690acf9bf0d4b06e6ab2fffcf.svg"
+      alt=""
+      width={64}
+      height={64}
+      className="h-16 w-16"
+      aria-hidden
+    />
   );
 }
 
