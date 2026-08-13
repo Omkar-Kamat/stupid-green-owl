@@ -57,4 +57,9 @@ curl -fsS "${API_BASE_URL}/health-check" >/dev/null
 echo "Running end-to-end smoke test..."
 bash scripts/smoke_test.sh
 
+echo ""
+echo "Alembic state after verification:"
+alembic current
+alembic heads
+
 echo "==> Fresh install verification passed <=="

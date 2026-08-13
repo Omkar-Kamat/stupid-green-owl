@@ -49,6 +49,14 @@ def request(method: str, path: str, body: dict | None = None) -> dict:
         raise RuntimeError(f"{method} {path} failed ({exc.code}): {detail}") from exc
 
 
+def skill_by_id(path: dict, skill_id: int) -> dict:
+    for unit in path["units"]:
+        for skill in unit["skills"]:
+            if skill["id"] == skill_id:
+                return skill
+    raise RuntimeError(f"Skill {skill_id} not found in path")
+
+
 def main() -> int:
     print("==> Running smoke test <==")
     print(f"API base: {API_BASE}")
@@ -64,13 +72,15 @@ def main() -> int:
     stats_before = request("GET", "/me/stats")
     print(f"✓ GET /me/stats (xp={stats_before['total_xp']}, hearts={stats_before['hearts']})")
 
-    path = request("GET", "/path")
-    assert path["units"], "path has no units"
-    print(f"✓ GET /path ({len(path['units'])} units)")
+    path_before = request("GET", "/path")
+    assert path_before["units"], "path has no units"
+    print(f"✓ GET /path ({len(path_before['units'])} units)")
 
     start = request("POST", "/lessons/1/start")
     attempt_id = start["attempt_id"]
     exercises = start["exercises"]
+    hearts_at_start = start["hearts_remaining"]
+    cursor_at_start = start["current_exercise_index"]
     print(f"✓ POST /lessons/1/start (attempt={attempt_id}, exercises={len(exercises)})")
 
     if len(exercises) != len(LESSON_1_ANSWERS):
@@ -91,14 +101,19 @@ def main() -> int:
     if missing:
         raise RuntimeError(f"Lesson 1 seed missing exercise types: {sorted(missing)}")
 
-    # Wrong answer on first exercise (should not fail HTTP)
     wrong = request(
         "POST",
         f"/lesson-attempts/{attempt_id}/answers",
         {"exercise_id": exercises[0]["id"], "answer": "wrong"},
     )
     assert wrong.get("correct") is False
-    print("✓ wrong answer accepted (200, correct=false)")
+    assert wrong["hearts_remaining"] == hearts_at_start - 1, (
+        f"Expected hearts {hearts_at_start - 1}, got {wrong['hearts_remaining']}"
+    )
+    assert wrong["next_exercise_index"] == cursor_at_start, (
+        "Wrong answer must not advance exercise cursor"
+    )
+    print("✓ wrong answer: hearts -1, cursor unchanged")
 
     for index, (exercise, answer) in enumerate(zip(exercises, LESSON_1_ANSWERS, strict=True)):
         result = request(
@@ -121,10 +136,16 @@ def main() -> int:
         f"✓ POST /complete (xp_awarded={complete['xp_awarded']}, total_xp={complete['total_xp']})"
     )
 
-    # Idempotent retry — side effects must not double-award XP
     retry = request("POST", f"/lesson-attempts/{attempt_id}/complete")
     assert retry["xp_awarded"] == complete["xp_awarded"]
     print("✓ completion retry is idempotent for xp_awarded")
+
+    path_after = request("GET", "/path")
+    skill1 = skill_by_id(path_after, 1)
+    skill2 = skill_by_id(path_after, 2)
+    assert skill1["status"] == "completed", skill1
+    assert skill2["status"] == "available", skill2
+    print("✓ GET /path after completion (skill1 completed, skill2 available)")
 
     stats_after = request("GET", "/me/stats")
     print(f"✓ GET /me/stats after lesson (xp={stats_after['total_xp']})")

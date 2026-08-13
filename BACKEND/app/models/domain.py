@@ -185,7 +185,7 @@ class LessonAttempt(Base):
     current_exercise_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     hearts_lost: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     xp_awarded: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    crown_earned: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)
+    crown_earned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     started_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

@@ -1,6 +1,6 @@
 # Backend - Duolingo Clone (stupid-green-owl)
 
-A comprehensive backend service for a language learning platform, implementing the core gamification, progression, and learning mechanics of Duolingo. Built with a focus on strict state-machine invariants, robust transaction boundaries, and a scalable 3-tier architecture.
+A comprehensive backend service for a language learning platform, implementing core gamification, progression, and lesson mechanics. **Assignment-ready** for local/demo deployment; not positioned as production-hardened infrastructure.
 
 ## Features
 - **Course Progression**: Hydrates hierarchical `Course → Unit → Skill` structures locked against a user's progress.
@@ -16,7 +16,7 @@ A comprehensive backend service for a language learning platform, implementing t
 - **ORM**: SQLAlchemy 2.0
 - **Migrations**: Alembic
 - **Validation/Serialization**: Pydantic v2
-- **Testing**: Pytest (with pytest-asyncio and httpx)
+- **Testing**: Pytest + httpx TestClient
 
 ## Key Engineering Decisions
 - **Route → Service → Repository**: Strict boundary separation. Routes handle HTTP only, repositories handle SQL only, and services own the business logic.
@@ -144,9 +144,11 @@ Deployment must not rely on the local SQLite file being pre-populated. Startup s
 3. **Seed**: Run `python seed.py` (deterministic reset/reseed).
 4. **Start**: Deploy via Docker/Gunicorn wrapping Uvicorn workers.
 
-**PostgreSQL**: The ORM layer is Postgres-compatible. For production, set `DATABASE_URL` to a PostgreSQL connection string and install a driver (`psycopg[binary]` recommended — not bundled in `requirements.txt` because the assignment default is SQLite).
+**PostgreSQL**: The ORM layer is Postgres-compatible. For production beyond this assignment scope, set `DATABASE_URL` and install `psycopg[binary]` (documented in `requirements.txt`, not installed by default).
 
-**Frontend**: Set `NEXT_PUBLIC_API_URL` to the deployed backend origin (e.g. `https://api.example.com`). Without it, the Next.js client falls back to `http://localhost:8000`.
+**OpenAPI**: Canonical spec is `docs/openapi.json`. Regenerate with `bash scripts/export_openapi.sh` while the server is running.
+
+**Frontend**: Set `NEXT_PUBLIC_API_URL` to the deployed backend origin. Without it, the Next.js client falls back to `http://localhost:8000`.
 
 ## Known Limitations
 - The `type_answer` evaluator currently uses strict string equality. NLP/Levenshtein distance matching would be required for a production typo-forgiving experience.
