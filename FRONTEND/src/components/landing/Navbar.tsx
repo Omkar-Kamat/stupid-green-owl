@@ -1,5 +1,5 @@
 import { Logo } from "@/components/ui/Logo";
-import { Button } from "@/components/ui/Button";
+import { AuthButton } from "@/components/auth/AuthButton";
 
 interface NavbarProps {
   variant?: "default" | "withSiteLanguage";
@@ -28,9 +28,9 @@ export function Navbar({ variant = "default" }: NavbarProps) {
             </svg>
           </button>
         ) : (
-          <Button variant="green" size="sm" href="/learn">
+          <AuthButton variant="green" size="sm" redirectTo="/learn">
             Get Started
-          </Button>
+          </AuthButton>
         )}
       </div>
     </header>

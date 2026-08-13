@@ -1,4 +1,5 @@
 import { MainHeroIllustration } from "@/components/illustrations/MainHeroIllustration";
+import { AuthButton } from "@/components/auth/AuthButton";
 import { Button } from "@/components/ui/Button";
 
 export function MainHero() {
@@ -15,9 +16,9 @@ export function MainHero() {
           </h1>
 
           <div className="flex w-full max-w-[330px] flex-col gap-4">
-            <Button variant="green" size="lg" href="/learn" fullWidth>
+            <AuthButton variant="green" size="lg" redirectTo="/learn" fullWidth>
               Get Started
-            </Button>
+            </AuthButton>
             <Button variant="white" size="lg" href="/login" fullWidth>
               I already have an account
             </Button>

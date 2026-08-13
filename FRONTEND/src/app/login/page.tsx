@@ -1,12 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { AuthButton } from "@/components/auth/AuthButton";
 import { Button } from "@/components/ui/Button";
+import { DEMO_CREDENTIALS, signInAsDemoUser } from "@/lib/demoAuth";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    setUsername(DEMO_CREDENTIALS.username);
+    setPassword(DEMO_CREDENTIALS.password);
+  }, []);
+
+  const loginAndGo = (path: string) => {
+    signInAsDemoUser();
+    router.push(path);
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-duo-dark-bg">
-      {/* Top bar */}
       <header className="flex items-center justify-between px-6 py-4">
         <Link
           href="/"
@@ -15,29 +32,42 @@ export default function LoginPage() {
         >
           ✕
         </Link>
-        <Button variant="outline" size="sm" href="/learn">
+        <AuthButton variant="outline" size="sm" redirectTo="/learn">
           Sign Up
-        </Button>
+        </AuthButton>
       </header>
 
-      {/* Login form */}
       <main className="flex flex-1 flex-col items-center justify-center px-6 pb-12">
         <div className="w-full max-w-[400px]">
           <h1 className="mb-8 text-center text-[28px] font-extrabold text-white">
             Log in
           </h1>
 
-          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              loginAndGo("/learn/japanese");
+            }}
+          >
             <input
               type="text"
+              name="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               placeholder="Email or username"
+              autoComplete="username"
               className="w-full rounded-2xl border-2 border-duo-dark-border bg-duo-dark-input px-4 py-4 text-[16px] text-white placeholder:text-duo-gray-muted focus:border-duo-green focus:outline-none"
             />
 
             <div className="relative">
               <input
                 type="password"
+                name="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
+                autoComplete="current-password"
                 className="w-full rounded-2xl border-2 border-duo-dark-border bg-duo-dark-input px-4 py-4 pr-24 text-[16px] text-white placeholder:text-duo-gray-muted focus:border-duo-green focus:outline-none"
               />
               <button
@@ -48,12 +78,17 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <Button variant="green" size="lg" fullWidth className="mt-2">
+            <Button
+              type="submit"
+              variant="green"
+              size="lg"
+              fullWidth
+              className="mt-2"
+            >
               Log In
             </Button>
           </form>
 
-          {/* OR divider */}
           <div className="my-8 flex items-center gap-4">
             <div className="h-px flex-1 bg-duo-dark-border" />
             <span className="text-[13px] font-bold uppercase tracking-wide text-duo-gray-muted">
@@ -62,10 +97,10 @@ export default function LoginPage() {
             <div className="h-px flex-1 bg-duo-dark-border" />
           </div>
 
-          {/* Social login */}
           <div className="flex gap-4">
             <button
               type="button"
+              onClick={() => loginAndGo("/learn/japanese")}
               className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-duo-dark-border border-b-4 bg-duo-dark-input px-4 py-3.5 text-[13px] font-bold uppercase tracking-wide text-duo-gray-muted transition-all hover:bg-duo-dark-border/30 active:border-b-2 active:translate-y-[2px]"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -91,6 +126,7 @@ export default function LoginPage() {
 
             <button
               type="button"
+              onClick={() => loginAndGo("/learn/japanese")}
               className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-duo-dark-border border-b-4 bg-duo-dark-input px-4 py-3.5 text-[13px] font-bold uppercase tracking-wide text-duo-gray-muted transition-all hover:bg-duo-dark-border/30 active:border-b-2 active:translate-y-[2px]"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#1877F2" aria-hidden="true">
@@ -100,7 +136,6 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Legal text */}
           <p className="mt-10 text-center text-[13px] leading-relaxed text-duo-gray-muted">
             By signing in to Stupid Green Owl, you agree to our{" "}
             <a href="#" className="underline hover:text-white">

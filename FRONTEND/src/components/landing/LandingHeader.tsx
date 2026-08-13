@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/ui/Logo";
-import { Button } from "@/components/ui/Button";
+import { AuthButton } from "@/components/auth/AuthButton";
 import { SiteLanguageDropdown } from "@/components/landing/SiteLanguageDropdown";
 
 export function LandingHeader() {
@@ -30,9 +30,9 @@ export function LandingHeader() {
       <div className="mx-auto flex h-[70px] max-w-[1080px] items-center justify-between px-6 md:px-10">
         <Logo />
         {pastFlags ? (
-          <Button variant="green" size="sm" href="/learn">
+          <AuthButton variant="green" size="sm" redirectTo="/learn">
             Get Started
-          </Button>
+          </AuthButton>
         ) : (
           <SiteLanguageDropdown />
         )}

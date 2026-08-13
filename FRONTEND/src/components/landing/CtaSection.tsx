@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/Button";
+import { AuthButton } from "@/components/auth/AuthButton";
 
 export function CtaSection() {
   return (
@@ -8,9 +8,9 @@ export function CtaSection() {
           learn a language with stupid-green-owl
         </h2>
 
-        <Button variant="green" size="lg" href="/learn" className="mb-12">
+        <AuthButton variant="green" size="lg" redirectTo="/learn" className="mb-12">
           Get Started
-        </Button>
+        </AuthButton>
       </div>
 
       {/* Green background with curved top */}

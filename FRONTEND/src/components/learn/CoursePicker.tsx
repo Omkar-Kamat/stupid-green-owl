@@ -1,17 +1,31 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import { LEARN_COURSES } from "@/data/languages";
+import { signInAsDemoUser } from "@/lib/demoAuth";
 
 function CourseCard({
+  id,
   name,
   flag,
   learners,
 }: {
+  id: string;
   name: string;
   flag: string;
   learners: string;
 }) {
+  const router = useRouter();
+
+  const handleSelect = () => {
+    signInAsDemoUser();
+    router.push(`/learn/${id}`);
+  };
+
   return (
     <button
       type="button"
+      onClick={handleSelect}
       className="flex w-[200px] flex-col items-center rounded-2xl border-2 border-duo-gray-border bg-white px-4 pb-5 pt-6 text-center transition-colors hover:bg-[#fafafa] active:bg-[#f5f5f5]"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -42,6 +56,7 @@ export function CoursePicker() {
         {LEARN_COURSES.map((course) => (
           <CourseCard
             key={course.id}
+            id={course.id}
             name={course.name}
             flag={course.flag}
             learners={course.learners}
