@@ -40,8 +40,7 @@ class GamificationService:
     def consume_heart(self, user_stats: UserStats) -> None:
         self.regenerate_hearts(user_stats)
         if user_stats.hearts > 0:
-            if user_stats.hearts == user_stats.max_hearts:
-                user_stats.last_heart_lost_at = datetime.now(timezone.utc)
+            user_stats.last_heart_lost_at = datetime.now(timezone.utc)
             user_stats.hearts -= 1
 
     def refill_hearts(self, user_stats: UserStats) -> None:

@@ -21,7 +21,11 @@ class UserService:
             raise NotFoundError("USER_STATS", user_id)
             
         if self.gamification_service.regenerate_hearts(stats):
-            self.stats_repo.db.commit()
+            try:
+                self.stats_repo.db.commit()
+            except Exception:
+                self.stats_repo.db.rollback()
+                raise
             
         return stats
 
@@ -39,5 +43,9 @@ class UserService:
             raise ConflictError("NOT_ENOUGH_GEMS")
             
         self.gamification_service.refill_hearts(stats)
-        self.stats_repo.db.commit()
+        try:
+            self.stats_repo.db.commit()
+        except Exception:
+            self.stats_repo.db.rollback()
+            raise
         return stats

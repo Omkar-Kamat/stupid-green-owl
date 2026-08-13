@@ -138,3 +138,22 @@ def test_forced_db_failure_no_partial_update(client, db, setup_user, monkeypatch
     db.refresh(stats)
     assert stats.hearts == 1
     assert stats.gems == 1000
+
+def test_consuming_heart_resets_timer(client, db, setup_user):
+    from app.services.gamification_service import GamificationService
+    
+    # 5 hours ago (more than 1 interval, less than 2)
+    lost_time = datetime.now(timezone.utc) - timedelta(hours=5)
+    stats = UserStats(user_id=1, hearts=3, max_hearts=5, last_heart_lost_at=lost_time)
+    db.add(stats)
+    db.commit()
+    
+    gamification_service = GamificationService()
+    gamification_service.consume_heart(stats)
+    
+    # 3 hearts + 1 regenerated = 4 hearts. Consume 1 = 3 hearts.
+    assert stats.hearts == 3
+    
+    # Timer MUST be reset to exactly now
+    diff = (datetime.now(timezone.utc) - stats.last_heart_lost_at.replace(tzinfo=timezone.utc)).total_seconds()
+    assert diff < 2
