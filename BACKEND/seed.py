@@ -58,13 +58,13 @@ def seed_db():
             lesson_id=lesson1.id, order_index=1, type=ExerciseType.translate,
             prompt="Translate this sentence",
             data={"source_text": "Hello", "word_bank": ["Hola", "Adiós"]},
-            correct_answer="Hola"
+            correct_answer=["Hola"]
         )
         ex3 = Exercise(
             lesson_id=lesson1.id, order_index=2, type=ExerciseType.type_answer,
             prompt="Type the translation",
             data={"placeholder": "Type your answer"},
-            correct_answer="Hola"
+            correct_answer=["Hola"]
         )
         db.add_all([ex1, ex2, ex3])
         
@@ -79,19 +79,19 @@ def seed_db():
             lesson_id=lesson2.id, order_index=1, type=ExerciseType.translate,
             prompt="Translate this sentence",
             data={"source_text": "I eat an apple", "word_bank": ["Yo", "como", "una", "manzana"]},
-            correct_answer="Yo como una manzana"
+            correct_answer=["Yo", "como", "una", "manzana"]
         )
         l2_ex3 = Exercise(
             lesson_id=lesson2.id, order_index=2, type=ExerciseType.type_answer,
             prompt="Type the translation",
             data={"placeholder": "Type your answer"},
-            correct_answer="Manzana"
+            correct_answer=["Manzana"]
         )
         l2_ex4 = Exercise(
             lesson_id=lesson2.id, order_index=3, type=ExerciseType.fill_blank,
             prompt="Fill in the blank",
             data={"sentence": "Yo ___ estudiante", "options": ["soy", "es", "eres"]},
-            correct_answer="soy"
+            correct_answer=["soy"]
         )
         l2_ex5 = Exercise(
             lesson_id=lesson2.id, order_index=4, type=ExerciseType.match_pairs,

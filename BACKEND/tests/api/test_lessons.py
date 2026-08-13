@@ -116,3 +116,19 @@ def test_lesson_no_exercises(client, db, setup_data):
     res = client.post(f"/api/v1/lessons/{empty_lesson.id}/start")
     assert res.status_code == 409
     assert res.json()["detail"] == "LESSON_HAS_NO_EXERCISES"
+
+def test_start_lesson_missing_stats(client, db, setup_data):
+    user2 = User(id=2, username="no_stats_user")
+    db.add(user2)
+    db.commit()
+    
+    from app.api.deps import get_current_user
+    from app.main import app
+    app.dependency_overrides[get_current_user] = lambda: 2
+    try:
+        res = client.post("/api/v1/lessons/1/start")
+        assert res.status_code == 409
+        assert res.json()["detail"] == "CORRUPTED_USER_STATS"
+    finally:
+        if get_current_user in app.dependency_overrides:
+            del app.dependency_overrides[get_current_user]

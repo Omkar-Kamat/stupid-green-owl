@@ -91,7 +91,9 @@ class LessonService:
             raise ForbiddenError("SKILL_LOCKED")
             
         stats = self.user_stats_repo.get_stats_by_user_id(user_id)
-        hearts_remaining = stats.hearts if stats else 5
+        if not stats:
+            raise ConflictError("CORRUPTED_USER_STATS")
+        hearts_remaining = stats.hearts
         
         for attempt_idx in range(2):
             active_attempt = self.attempt_repo.get_active_attempt(user_id, lesson_id)

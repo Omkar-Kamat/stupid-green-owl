@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.exceptions import NotFoundError, ForbiddenError, ConflictError
+from app.core.exceptions import NotFoundError, ForbiddenError, ConflictError, InvalidPayloadError
 from app.api.v1.routes import me, path, lessons, lesson_attempts
 
 app = FastAPI(
@@ -32,6 +32,10 @@ def forbidden_error_handler(request: Request, exc: ForbiddenError):
 @app.exception_handler(ConflictError)
 def conflict_error_handler(request: Request, exc: ConflictError):
     return JSONResponse(status_code=409, content={"detail": exc.reason})
+
+@app.exception_handler(InvalidPayloadError)
+def invalid_payload_error_handler(request: Request, exc: InvalidPayloadError):
+    return JSONResponse(status_code=422, content={"detail": exc.reason})
 
 app.include_router(me.router, prefix=f"{settings.API_V1_STR}/me", tags=["me"])
 app.include_router(path.router, prefix=f"{settings.API_V1_STR}/path", tags=["path"])

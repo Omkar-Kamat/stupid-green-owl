@@ -143,9 +143,15 @@ def test_future_exercise(client, db, setup_data):
     assert res.status_code == 409
     assert res.json()["detail"] == "EXERCISE_NOT_CURRENT"
 
-def test_malformed_payload(client, db, setup_data):
+def test_malformed_payload_missing_field(client, db, setup_data):
     res = client.post("/api/v1/lesson-attempts/1/answers", json={"answer": "A"}) # missing exercise_id
     assert res.status_code == 422
+
+def test_malformed_shape_422(client, db, setup_data):
+    # Exercise 1 is multiple_choice, expects string answer
+    res = client.post("/api/v1/lesson-attempts/1/answers", json={"exercise_id": 1, "answer": ["wrong type"]})
+    assert res.status_code == 422
+    assert res.json()["detail"] == "INVALID_ANSWER_PAYLOAD"
 
 def test_submit_answer_transaction_rollback(client, db, setup_data):
     from unittest.mock import patch

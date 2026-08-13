@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 from app.models.domain import Exercise, ExerciseType
+from app.core.exceptions import InvalidPayloadError
 
 class AnswerEvaluator(ABC):
     @abstractmethod
@@ -10,31 +11,31 @@ class AnswerEvaluator(ABC):
 class MultipleChoiceEvaluator(AnswerEvaluator):
     def evaluate(self, exercise: Exercise, submitted_answer: Any) -> bool:
         if not isinstance(submitted_answer, str):
-            return False
+            raise InvalidPayloadError("INVALID_ANSWER_PAYLOAD")
         return exercise.correct_answer == submitted_answer
 
 class TranslateEvaluator(AnswerEvaluator):
     def evaluate(self, exercise: Exercise, submitted_answer: Any) -> bool:
-        if not isinstance(submitted_answer, list):
-            return False
+        if not isinstance(submitted_answer, list) or not all(isinstance(x, str) for x in submitted_answer):
+            raise InvalidPayloadError("INVALID_ANSWER_PAYLOAD")
         return exercise.correct_answer == submitted_answer
 
 class MatchPairsEvaluator(AnswerEvaluator):
     def evaluate(self, exercise: Exercise, submitted_answer: Any) -> bool:
         if not isinstance(submitted_answer, dict):
-            return False
+            raise InvalidPayloadError("INVALID_ANSWER_PAYLOAD")
         return exercise.correct_answer == submitted_answer
 
 class FillBlankEvaluator(AnswerEvaluator):
     def evaluate(self, exercise: Exercise, submitted_answer: Any) -> bool:
-        if not isinstance(submitted_answer, list):
-            return False
+        if not isinstance(submitted_answer, list) or not all(isinstance(x, str) for x in submitted_answer):
+            raise InvalidPayloadError("INVALID_ANSWER_PAYLOAD")
         return exercise.correct_answer == submitted_answer
 
 class TypeAnswerEvaluator(AnswerEvaluator):
     def evaluate(self, exercise: Exercise, submitted_answer: Any) -> bool:
         if not isinstance(submitted_answer, str):
-            return False
+            raise InvalidPayloadError("INVALID_ANSWER_PAYLOAD")
         
         submitted = submitted_answer.strip().lower()
         if not isinstance(exercise.correct_answer, list):

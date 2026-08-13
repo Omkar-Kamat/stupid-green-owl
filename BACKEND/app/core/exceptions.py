@@ -17,3 +17,8 @@ class ConflictError(DomainError):
     def __init__(self, reason: str = "CONFLICT"):
         self.reason = reason
         super().__init__(reason)
+
+class InvalidPayloadError(DomainError):
+    def __init__(self, reason: str = "INVALID_PAYLOAD"):
+        self.reason = reason
+        super().__init__(reason)
