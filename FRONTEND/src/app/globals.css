@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "din-round";
+  src: url("/fonts/din-round-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "din-round";
+  src: url("/fonts/din-round-bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "din-round";
+  src: url("/fonts/din-round-black.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/nunito.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme inline {
+  --color-duo-green: #4b4b4b;
+  --color-duo-green-dark: #3d3d3d;
+  --color-duo-green-darker: #333333;
+  --color-duo-blue: #1cb0f6;
+  --color-duo-blue-dark: #1899d6;
+  --color-duo-gray: #4b4b4b;
+  --color-duo-gray-light: #777777;
+  --color-duo-gray-muted: #afafaf;
+  --color-duo-gray-border: #e5e5e5;
+  --color-duo-dark-bg: #131f24;
+  --color-duo-dark-input: #202f36;
+  --color-duo-dark-border: #37464f;
+  --font-duo: "din-round", "Nunito", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: "din-round", "Nunito", sans-serif;
+  color: var(--color-duo-gray);
+  background: #ffffff;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #e5e5e5;
+  color: #4b4b4b;
+}
+
+/* Hide scrollbar for language bar */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Duolingo-style link hover */
+.footer-link:hover {
+  text-decoration: underline;
+}
+
+.site-lang-link:hover {
+  text-decoration: underline;
+}
