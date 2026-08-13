@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.exceptions import NotFoundError, ForbiddenError, ConflictError
-from app.api.v1.routes import me
+from app.api.v1.routes import me, path
 
 from app.core.config import settings
 
@@ -36,6 +36,7 @@ def conflict_error_handler(request: Request, exc: ConflictError):
     return JSONResponse(status_code=409, content={"detail": exc.reason})
 
 app.include_router(me.router, prefix=f"{settings.API_V1_STR}/me", tags=["me"])
+app.include_router(path.router, prefix=f"{settings.API_V1_STR}/path", tags=["path"])
 
 @app.get("/health-check")
 def health_check():
