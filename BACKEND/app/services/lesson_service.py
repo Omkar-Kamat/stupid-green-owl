@@ -190,6 +190,11 @@ class LessonService:
                     lesson_failed = True
                     
             self.attempt_repo.db.commit()
+        except IntegrityError as e:
+            self.attempt_repo.db.rollback()
+            if "UNIQUE constraint failed" not in str(e.orig):
+                raise
+            raise ConflictError("EXERCISE_ALREADY_ANSWERED")
         except Exception:
             self.attempt_repo.db.rollback()
             raise

@@ -175,3 +175,17 @@ def test_submit_answer_transaction_rollback(client, db, setup_data):
     
     ex_attempt = db.query(ExerciseAttempt).filter_by(lesson_attempt_id=1).first()
     assert ex_attempt is None
+
+def test_concurrent_correct_answer_409(client, db, setup_data):
+    from unittest.mock import patch
+    from sqlalchemy.exc import IntegrityError
+    
+    # Mock flush to simulate the partial unique constraint failing (as if a concurrent request just inserted it)
+    class MockOrig:
+        def __str__(self):
+            return "UNIQUE constraint failed"
+            
+    with patch('sqlalchemy.orm.Session.flush', side_effect=IntegrityError("mock", "mock", MockOrig())):
+        res = client.post("/api/v1/lesson-attempts/1/answers", json={"exercise_id": 1, "answer": "A"})
+        assert res.status_code == 409
+        assert res.json()["detail"] == "EXERCISE_ALREADY_ANSWERED"
