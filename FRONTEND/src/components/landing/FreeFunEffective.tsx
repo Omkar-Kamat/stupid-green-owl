@@ -9,7 +9,7 @@ export function FreeFunEffective() {
             free. fun. effective.
           </h2>
           <p className="max-w-[480px] text-lg leading-relaxed text-duo-gray">
-            Learning with Duolingo is fun, and{" "}
+            Learning with stupid-green-owl is fun, and{" "}
             <a
               href="#"
               className="font-bold text-duo-blue underline decoration-duo-blue underline-offset-2 hover:no-underline"

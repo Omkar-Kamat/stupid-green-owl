@@ -1,4 +1,3 @@
-import { CtaPhoneIllustration } from "@/components/illustrations/CtaPhoneIllustration";
 import { Button } from "@/components/ui/Button";
 
 export function CtaSection() {
@@ -6,16 +5,12 @@ export function CtaSection() {
     <section className="relative overflow-hidden bg-white pb-0 pt-16 md:pt-24">
       <div className="mx-auto flex max-w-[1080px] flex-col items-center px-6 md:px-10">
         <h2 className="mb-8 text-center text-[32px] font-extrabold lowercase leading-tight text-duo-green md:text-[48px]">
-          learn a language with duolingo
+          learn a language with stupid-green-owl
         </h2>
 
         <Button variant="green" size="lg" href="/learn" className="mb-12">
           Get Started
         </Button>
-
-        <div className="relative z-10 -mb-8">
-          <CtaPhoneIllustration />
-        </div>
       </div>
 
       {/* Green background with curved top */}

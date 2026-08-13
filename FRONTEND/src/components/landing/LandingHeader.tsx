@@ -3,27 +3,7 @@
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
-
-function SiteLanguageButton() {
-  return (
-    <button
-      type="button"
-      className="flex items-center gap-1 text-[13px] font-bold uppercase tracking-wide text-duo-gray-muted hover:text-duo-gray"
-    >
-      Site language: English
-      <svg
-        viewBox="0 0 24 24"
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        aria-hidden="true"
-      >
-        <path d="M6 9l6 6 6-6" />
-      </svg>
-    </button>
-  );
-}
+import { SiteLanguageDropdown } from "@/components/landing/SiteLanguageDropdown";
 
 export function LandingHeader() {
   const [pastFlags, setPastFlags] = useState(false);
@@ -54,7 +34,7 @@ export function LandingHeader() {
             Get Started
           </Button>
         ) : (
-          <SiteLanguageButton />
+          <SiteLanguageDropdown />
         )}
       </div>
     </header>

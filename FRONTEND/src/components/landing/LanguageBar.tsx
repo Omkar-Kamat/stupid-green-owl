@@ -31,15 +31,25 @@ export function LanguageBar() {
 
         <div
           ref={scrollRef}
-          className="hide-scrollbar flex flex-1 items-center gap-6 overflow-x-auto py-4"
+          className="hide-scrollbar flex flex-1 items-center gap-7 overflow-x-auto py-6"
         >
           {COURSE_LANGUAGES.map((lang) => (
             <button
               key={lang.id}
               type="button"
-              className="flex shrink-0 items-center gap-2 text-[13px] font-bold uppercase tracking-wide text-duo-gray-muted transition-colors hover:text-duo-gray"
+              className="flex shrink-0 items-center gap-2.5 text-[13px] font-bold uppercase tracking-wide text-duo-gray-muted transition-colors hover:text-duo-gray"
             >
-              <span className="text-xl leading-none">{lang.icon}</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/flags/${lang.flag}`}
+                alt=""
+                width={28}
+                height={28}
+                className="h-7 w-7 shrink-0"
+                aria-hidden
+                loading="lazy"
+                decoding="async"
+              />
               {lang.name}
             </button>
           ))}

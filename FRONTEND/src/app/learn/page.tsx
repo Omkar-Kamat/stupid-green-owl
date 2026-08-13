@@ -1,19 +1,13 @@
-import { Navbar } from "@/components/landing/Navbar";
+import { CoursePicker } from "@/components/learn/CoursePicker";
+import { LearnHeader } from "@/components/learn/LearnHeader";
 
 export default function LearnPage() {
   return (
-    <>
-      <Navbar />
-      <main className="flex min-h-[60vh] flex-col items-center justify-center px-6 py-20">
-        <div className="text-center">
-          <h1 className="mb-4 text-[32px] font-extrabold text-duo-green">
-            Coming Soon
-          </h1>
-          <p className="text-lg text-duo-gray-light">
-            The learning path and lesson player are under construction.
-          </p>
-        </div>
+    <div className="flex min-h-screen flex-col bg-white">
+      <LearnHeader />
+      <main className="mx-auto flex w-full max-w-[920px] flex-1 flex-col items-center">
+        <CoursePicker />
       </main>
-    </>
+    </div>
   );
 }

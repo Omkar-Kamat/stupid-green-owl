@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Duolingo - The world's best way to learn a language",
+  title: "Stupid Green Owl",
   description:
-    "Learn languages, chess, and more with Duolingo. Free. Fun. Effective.",
+    "Learn languages, chess, and more with stupid-green-owl. Free. Fun. Effective.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

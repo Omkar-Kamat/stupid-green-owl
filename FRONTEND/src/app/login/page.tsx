@@ -31,14 +31,14 @@ export default function LoginPage() {
             <input
               type="text"
               placeholder="Email or username"
-              className="w-full rounded-2xl border-2 border-duo-dark-border bg-duo-dark-input px-4 py-4 text-[16px] text-white placeholder:text-duo-gray-muted focus:border-duo-blue focus:outline-none"
+              className="w-full rounded-2xl border-2 border-duo-dark-border bg-duo-dark-input px-4 py-4 text-[16px] text-white placeholder:text-duo-gray-muted focus:border-duo-green focus:outline-none"
             />
 
             <div className="relative">
               <input
                 type="password"
                 placeholder="Password"
-                className="w-full rounded-2xl border-2 border-duo-dark-border bg-duo-dark-input px-4 py-4 pr-24 text-[16px] text-white placeholder:text-duo-gray-muted focus:border-duo-blue focus:outline-none"
+                className="w-full rounded-2xl border-2 border-duo-dark-border bg-duo-dark-input px-4 py-4 pr-24 text-[16px] text-white placeholder:text-duo-gray-muted focus:border-duo-green focus:outline-none"
               />
               <button
                 type="button"
@@ -48,7 +48,7 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <Button variant="blue" size="lg" fullWidth className="mt-2">
+            <Button variant="green" size="lg" fullWidth className="mt-2">
               Log In
             </Button>
           </form>
@@ -66,7 +66,7 @@ export default function LoginPage() {
           <div className="flex gap-4">
             <button
               type="button"
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-duo-dark-border border-b-4 bg-duo-dark-input px-4 py-3.5 text-[13px] font-bold uppercase tracking-wide text-duo-blue transition-all hover:bg-duo-dark-border/30 active:border-b-2 active:translate-y-[2px]"
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-duo-dark-border border-b-4 bg-duo-dark-input px-4 py-3.5 text-[13px] font-bold uppercase tracking-wide text-duo-gray-muted transition-all hover:bg-duo-dark-border/30 active:border-b-2 active:translate-y-[2px]"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
                 <path
@@ -91,7 +91,7 @@ export default function LoginPage() {
 
             <button
               type="button"
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-duo-dark-border border-b-4 bg-duo-dark-input px-4 py-3.5 text-[13px] font-bold uppercase tracking-wide text-[#1877F2] transition-all hover:bg-duo-dark-border/30 active:border-b-2 active:translate-y-[2px]"
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-duo-dark-border border-b-4 bg-duo-dark-input px-4 py-3.5 text-[13px] font-bold uppercase tracking-wide text-duo-gray-muted transition-all hover:bg-duo-dark-border/30 active:border-b-2 active:translate-y-[2px]"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="#1877F2" aria-hidden="true">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
@@ -102,7 +102,7 @@ export default function LoginPage() {
 
           {/* Legal text */}
           <p className="mt-10 text-center text-[13px] leading-relaxed text-duo-gray-muted">
-            By signing in to Duolingo, you agree to our{" "}
+            By signing in to Stupid Green Owl, you agree to our{" "}
             <a href="#" className="underline hover:text-white">
               Terms
             </a>{" "}
