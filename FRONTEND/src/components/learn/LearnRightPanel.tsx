@@ -5,12 +5,13 @@ import {
   LanguagesLearningBadge,
   LearnStatBadge,
 } from "@/components/learn/LearnStatBadge";
+import { LearnRightPanelFooter } from "@/components/learn/LearnRightPanelFooter";
 
 const LANGUAGES_LEARNING = 1;
 
 export function LearnRightPanel() {
   return (
-    <div className="mx-auto flex w-full max-w-[300px] flex-col gap-6 pb-10 pt-2">
+    <div className="mx-auto flex w-full max-w-[390px] flex-col gap-6 pb-10 pt-2">
       <div className="flex items-center justify-between px-1 py-2">
         <LanguagesLearningBadge count={LANGUAGES_LEARNING} />
         <LearnStatBadge
@@ -32,6 +33,7 @@ export function LearnRightPanel() {
 
       <BronzeLeagueCard />
       <DailyQuestsCard />
+      <LearnRightPanelFooter />
     </div>
   );
 }

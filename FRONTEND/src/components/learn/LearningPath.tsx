@@ -1,66 +1,84 @@
-const PATH_NODES: Array<{
-  id: string;
-  type: "start" | "star" | "chest" | "trophy";
-  offset: number;
-  active?: boolean;
-}> = [
-  { id: "1", type: "start", offset: 0, active: true },
-  { id: "2", type: "star", offset: 56 },
-  { id: "3", type: "chest", offset: -56 },
-  { id: "4", type: "star", offset: 56 },
-  { id: "5", type: "trophy", offset: 0 },
-];
+"use client";
 
-export function LearningPath() {
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  DEFAULT_UNIT,
+  unitProgressPercent,
+  type LessonNode,
+  type Unit,
+} from "@/data/courseStructure";
+import {
+  activeLessonIndex,
+  getUnitProgressWithDemo,
+  lessonState,
+  unitRingProgress,
+  type UnitProgress,
+} from "@/lib/unitProgress";
+
+const RING_RADIUS = 40;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+export function LearningPath({
+  unit = DEFAULT_UNIT,
+}: {
+  unit?: Unit;
+}) {
+  const [progress, setProgress] = useState<UnitProgress | null>(null);
+
+  useEffect(() => {
+    setProgress(getUnitProgressWithDemo(unit.id));
+  }, [unit.id]);
+
+  const activeIndex = progress ? activeLessonIndex(progress) : 0;
+  const nextUnit = unit.unitNumber < 5 ? unit.unitNumber + 1 : null;
+
   return (
     <div className="flex min-h-full flex-col">
-      <UnitBanner />
+      <UnitBanner unit={unit} progress={progress} />
 
       <div className="relative mx-auto flex w-full max-w-[720px] justify-center px-4 pb-20 pt-16 sm:px-6">
         <div className="relative flex w-[260px] shrink-0 flex-col items-center gap-10">
-          {PATH_NODES.map((node, index) => (
+          {unit.lessons.map((lesson, index) => (
             <div
-              key={node.id}
+              key={lesson.id}
               className="relative flex w-full justify-center"
-              style={{ transform: `translateX(${node.offset}px)` }}
+              style={{ transform: `translateX(${lesson.offset}px)` }}
             >
-              {index === 0 && (
+              {index === activeIndex && progress && (
                 <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-[13px] font-extrabold uppercase tracking-wider text-[#6b6b6b]">
-                  Start
+                  {index === 0 ? "Start" : "Continue"}
                 </span>
               )}
-              <PathNode type={node.type} active={node.active} />
+              <PathNode
+                lesson={lesson}
+                state={progress ? lessonState(progress, index) : index === 0 ? "active" : "locked"}
+                ringProgress={
+                  progress && lessonState(progress, index) === "active"
+                    ? unitRingProgress(progress, unit)
+                    : progress && lessonState(progress, index) === "complete"
+                      ? 100
+                      : 0
+                }
+              />
             </div>
           ))}
 
-          <div className="mt-4 w-full pt-6">
-            <div className="mb-10 flex items-center gap-4">
-              <div className="h-px flex-1 bg-[#37464f]" />
-              <span className="shrink-0 text-center text-[13px] font-extrabold uppercase tracking-wide text-[#52656d]">
-                Describe people
-              </span>
-              <div className="h-px flex-1 bg-[#37464f]" />
-            </div>
-
-            <div className="flex flex-col items-center">
-              <div className="relative z-20 mb-3">
-                <div className="rounded-2xl bg-[#ce82ff] px-5 py-2.5 text-[13px] font-bold uppercase tracking-wide text-white shadow-[0_4px_0_#a855d6]">
-                  Jump here?
-                </div>
-                <div className="absolute -bottom-2 left-1/2 h-0 w-0 -translate-x-1/2 border-x-[10px] border-t-[10px] border-x-transparent border-t-[#ce82ff]" />
+          {nextUnit && (
+            <div className="mt-4 w-full pt-6">
+              <div className="mb-10 flex items-center gap-4">
+                <div className="h-px flex-1 bg-[#37464f]" />
+                <span className="shrink-0 text-center text-[13px] font-extrabold uppercase tracking-wide text-[#52656d]">
+                  {unit.sectionNumber === 1 && nextUnit === 2
+                    ? "Describe people"
+                    : `Unit ${nextUnit}`}
+                </span>
+                <div className="h-px flex-1 bg-[#37464f]" />
               </div>
-              <button
-                type="button"
-                className="flex h-[70px] w-[70px] items-center justify-center rounded-full border-b-[6px] border-[#a855d6] bg-[#ce82ff] text-white shadow-[0_4px_0_#a855d6] transition-transform hover:scale-105 active:translate-y-[2px] active:border-b-[4px] active:shadow-none"
-                aria-label="Jump here"
-              >
-                <FastForwardIcon />
-              </button>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Owl column — beside the path, not overlapping nodes */}
         <div className="relative hidden w-[360px] shrink-0 sm:block">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -77,25 +95,58 @@ export function LearningPath() {
   );
 }
 
-function UnitBanner() {
+function UnitBanner({
+  unit,
+  progress,
+}: {
+  unit: Unit;
+  progress: UnitProgress | null;
+}) {
+  const pct = progress
+    ? Math.round(unitProgressPercent(progress.completedQuestions))
+    : 0;
+
   return (
     <div className="px-4 pt-8 pb-4 md:px-6">
       <div className="w-full rounded-2xl bg-duo-green shadow-[0_4px_0_#3d3d3d]">
         <div className="flex items-start justify-between gap-4 px-5 py-5 md:px-6">
           <div className="min-w-0">
-            <p className="text-[13px] font-extrabold uppercase tracking-wider text-white/75">
-              ← Section 1, Unit 1
+            <p className="flex items-center gap-1.5 text-[13px] font-extrabold uppercase tracking-wider text-white/75">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/illustrations/back-arrow.svg"
+                alt=""
+                width={16}
+                height={16}
+                className="h-4 w-4"
+                aria-hidden
+              />
+              Section {unit.sectionNumber}, Unit {unit.unitNumber}
             </p>
             <h2 className="mt-1 text-[22px] font-extrabold leading-tight text-white md:text-2xl">
-              Order food and drinks
+              {unit.title}
             </h2>
+            {progress && (
+              <p className="mt-1 text-[13px] font-bold text-white/70">
+                {progress.completedQuestions} / {unit.lessons.length * 10} questions · {pct}%
+              </p>
+            )}
           </div>
-          <button
-            type="button"
-            className="shrink-0 rounded-2xl border-2 border-b-4 border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-bold uppercase tracking-wide text-white transition-all hover:bg-white/20 active:border-b-2 active:translate-y-[2px]"
+          <Link
+            href="/learn/japanese/guidebook"
+            className="inline-flex shrink-0 items-center gap-2 rounded-2xl border-2 border-b-4 border-white/20 bg-white/10 px-4 py-2.5 text-[13px] font-bold uppercase tracking-wide text-white transition-all hover:bg-white/20 active:border-b-2 active:translate-y-[2px]"
           >
-            📖 Guidebook
-          </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/illustrations/guidebook.svg"
+              alt=""
+              width={24}
+              height={24}
+              className="h-6 w-6"
+              aria-hidden
+            />
+            Guidebook
+          </Link>
         </div>
       </div>
     </div>
@@ -103,15 +154,20 @@ function UnitBanner() {
 }
 
 function PathNode({
-  type,
-  active,
+  lesson,
+  state,
+  ringProgress,
 }: {
-  type: "start" | "star" | "chest" | "trophy";
-  active?: boolean;
+  lesson: LessonNode;
+  state: "locked" | "active" | "complete";
+  ringProgress: number;
 }) {
-  if (active) {
-    return (
-      <div className="relative flex h-[88px] w-[88px] items-center justify-center">
+  const filled = (ringProgress / 100) * RING_CIRCUMFERENCE;
+  const href = state === "locked" ? undefined : "/lesson/listening/before";
+
+  const buttonInner = (
+    <>
+      {state === "active" && (
         <svg
           className="absolute inset-0 h-full w-full -rotate-90"
           viewBox="0 0 88 88"
@@ -120,7 +176,7 @@ function PathNode({
           <circle
             cx="44"
             cy="44"
-            r="40"
+            r={RING_RADIUS}
             fill="none"
             stroke="#37464f"
             strokeWidth="6"
@@ -128,21 +184,59 @@ function PathNode({
           <circle
             cx="44"
             cy="44"
-            r="40"
+            r={RING_RADIUS}
             fill="none"
             stroke="#6b6b6b"
             strokeWidth="6"
-            strokeDasharray="190 251"
+            strokeDasharray={`${filled} ${RING_CIRCUMFERENCE}`}
             strokeLinecap="round"
           />
         </svg>
-        <button
-          type="button"
-          className="relative flex h-[70px] w-[70px] items-center justify-center rounded-full border-b-[6px] border-duo-green-dark bg-duo-green shadow-[0_4px_0_#3d3d3d] transition-transform hover:scale-105 active:translate-y-[2px] active:border-b-[4px] active:shadow-none"
-          aria-label={type}
+      )}
+      {state === "complete" && (
+        <svg
+          className="absolute inset-0 h-full w-full -rotate-90"
+          viewBox="0 0 88 88"
+          aria-hidden="true"
         >
-          <StarIcon />
-        </button>
+          <circle
+            cx="44"
+            cy="44"
+            r={RING_RADIUS}
+            fill="none"
+            stroke="#6b6b6b"
+            strokeWidth="6"
+          />
+        </svg>
+      )}
+      <span
+        className={`relative flex h-[70px] w-[70px] items-center justify-center rounded-full border-b-[6px] shadow-[0_4px_0_#3d3d3d] transition-transform active:translate-y-[2px] active:border-b-[4px] active:shadow-none ${
+          state === "active"
+            ? "border-duo-green-dark bg-duo-green hover:scale-105"
+            : state === "complete"
+              ? "border-[#3d3d3d] bg-duo-green hover:scale-105"
+              : "border-[#2b3a40] bg-[#37464f] shadow-[0_4px_0_#2b3a40]"
+        }`}
+      >
+        {lesson.type === "star" || lesson.type === "start" ? (
+          <StarIcon muted={state === "locked"} />
+        ) : null}
+        {lesson.type === "chest" && <ChestIcon />}
+        {lesson.type === "trophy" && <TrophyIcon />}
+      </span>
+    </>
+  );
+
+  if (state === "active" || state === "complete") {
+    return (
+      <div className="relative flex h-[88px] w-[88px] items-center justify-center">
+        {href ? (
+          <Link href={href} className="relative flex h-full w-full items-center justify-center" aria-label={lesson.title}>
+            {buttonInner}
+          </Link>
+        ) : (
+          buttonInner
+        )}
       </div>
     );
   }
@@ -150,12 +244,15 @@ function PathNode({
   return (
     <button
       type="button"
-      className="flex h-[70px] w-[70px] items-center justify-center rounded-full border-b-[6px] border-[#2b3a40] bg-[#37464f] shadow-[0_4px_0_#2b3a40] transition-transform hover:scale-105 active:translate-y-[2px] active:border-b-[4px] active:shadow-none"
-      aria-label={type}
+      disabled
+      className="flex h-[70px] w-[70px] items-center justify-center rounded-full border-b-[6px] border-[#2b3a40] bg-[#37464f] shadow-[0_4px_0_#2b3a40]"
+      aria-label={`${lesson.title} (locked)`}
     >
-      {type === "star" && <StarIcon muted />}
-      {type === "chest" && <ChestIcon />}
-      {type === "trophy" && <TrophyIcon />}
+      {lesson.type === "star" || lesson.type === "start" ? (
+        <StarIcon muted />
+      ) : null}
+      {lesson.type === "chest" && <ChestIcon />}
+      {lesson.type === "trophy" && <TrophyIcon />}
     </button>
   );
 }
@@ -175,10 +272,7 @@ function StarIcon({ muted = false }: { muted?: boolean }) {
 function ChestIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
-      <path
-        fill="#52656d"
-        d="M4 8h16v11H4V8zm2-5h12v5H6V3zm4 9v3h4v-3h-4z"
-      />
+      <path fill="#52656d" d="M4 8h16v11H4V8zm2-5h12v5H6V3zm4 9v3h4v-3h-4z" />
     </svg>
   );
 }
@@ -190,14 +284,6 @@ function TrophyIcon() {
         fill="#52656d"
         d="M6 4h12v3c0 3.3-2.3 6.1-5.5 6.8V17h3v2H8v-2h3v-3.2C7.3 13.1 5 10.3 5 7V4zm2 2v1c0 2.2 1.8 4 4 4s4-1.8 4-4V6H8z"
       />
-    </svg>
-  );
-}
-
-function FastForwardIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="currentColor" aria-hidden="true">
-      <path d="M5 5v14l8-7-8-7zm9 0v14l8-7-8-7z" />
     </svg>
   );
 }

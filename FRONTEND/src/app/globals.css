@@ -46,7 +46,20 @@
   --color-duo-dark-input: #202f36;
   --color-duo-dark-border: #37464f;
   --color-duo-learn-bg: #131f24;
+  --color-duo-text-primary: #ffffff;
+  --color-duo-text-secondary: #afafaf;
+  --color-duo-text-muted: #52656d;
   --font-duo: "din-round", "Nunito", sans-serif;
+}
+
+html[data-theme="light"] {
+  --color-duo-dark-bg: #ffffff;
+  --color-duo-dark-input: #f7f7f7;
+  --color-duo-dark-border: #e5e5e5;
+  --color-duo-learn-bg: #ffffff;
+  --color-duo-text-primary: #4b4b4b;
+  --color-duo-text-secondary: #777777;
+  --color-duo-text-muted: #afafaf;
 }
 
 * {

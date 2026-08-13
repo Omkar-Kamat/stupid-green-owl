@@ -1,10 +1,10 @@
+import { GuidebookContent } from "@/components/learn/GuidebookContent";
 import { LearnAppShell } from "@/components/learn/LearnAppShell";
-import { LearningPath } from "@/components/learn/LearningPath";
 
-export default function JapaneseLearnPage() {
+export default function GuidebookPage() {
   return (
     <LearnAppShell activeNav="learn">
-      <LearningPath />
+      <GuidebookContent />
     </LearnAppShell>
   );
 }

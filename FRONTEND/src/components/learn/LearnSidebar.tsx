@@ -1,22 +1,24 @@
 import Link from "next/link";
+import { ThemeToggleNavItem } from "@/components/theme/ThemeToggleNavItem";
 
 type NavIconProps = { active?: boolean };
 
 type NavItem =
-  | { id: string; label: string; src: string; active?: boolean }
-  | { id: string; label: string; icon: (props: NavIconProps) => React.ReactElement; active?: boolean };
+  | { id: string; label: string; src: string; href?: string }
+  | { id: string; label: string; icon: (props: NavIconProps) => React.ReactElement; href?: string };
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "learn", label: "Learn", src: "/illustrations/nav/learn.svg", active: true },
-  { id: "characters", label: "Characters", src: "/illustrations/nav/characters.svg" },
-  { id: "leaderboards", label: "Leaderboards", src: "/illustrations/nav/leaderboards.svg" },
-  { id: "quests", label: "Quests", src: "/illustrations/nav/quests.svg" },
-  { id: "shop", label: "Shop", src: "/illustrations/nav/shop.svg" },
-  { id: "profile", label: "Profile", icon: ProfileIcon },
-  { id: "more", label: "More", icon: MoreIcon },
+  { id: "learn", label: "Learn", src: "/illustrations/nav/learn.svg", href: "/learn/japanese" },
+  { id: "characters", label: "Characters", src: "/illustrations/nav/characters.svg", href: "/learn/japanese/characters" },
+  { id: "leaderboards", label: "Leaderboards", src: "/illustrations/nav/leaderboards.svg", href: "/learn/japanese/leaderboards" },
+  { id: "quests", label: "Quests", src: "/illustrations/nav/quests.svg", href: "/learn/japanese/quests" },
+  { id: "shop", label: "Shop", src: "/illustrations/nav/shop.svg", href: "/learn/japanese/shop" },
+  { id: "profile", label: "Profile", icon: ProfileIcon, href: "/learn/japanese/profile" },
 ];
 
-export function LearnSidebar() {
+const MORE_ITEM: NavItem = { id: "more", label: "More", icon: MoreIcon };
+
+export function LearnSidebar({ activeNav = "learn" }: { activeNav?: string }) {
   return (
     <aside className="hidden w-[256px] shrink-0 flex-col border-r border-duo-dark-border bg-duo-dark-bg md:flex">
       <div className="px-6 pb-2 pt-6">
@@ -29,29 +31,46 @@ export function LearnSidebar() {
       </div>
 
       <nav className="flex flex-col gap-0.5 px-3 pt-2">
-        {NAV_ITEMS.map((item) => {
-          const { id, label, active } = item;
-          return (
-            <button
-              key={id}
-              type="button"
-              className={`flex items-center gap-4 rounded-2xl px-4 py-3 text-left text-[15px] font-bold uppercase tracking-wide transition-colors ${
-                active
-                  ? "border-2 border-[#1cb0f6] bg-[#1cb0f6]/10 text-[#1cb0f6]"
-                  : "border-2 border-transparent text-[#52656d] hover:bg-white/5 hover:text-[#afafaf]"
-              }`}
-            >
-              {"src" in item ? (
-                <NavIcon src={item.src} active={active} />
-              ) : (
-                <item.icon active={active} />
-              )}
-              {label}
-            </button>
-          );
-        })}
+        {NAV_ITEMS.map((item) => renderNavItem(item, activeNav))}
+        <ThemeToggleNavItem />
+        {renderNavItem(MORE_ITEM, activeNav)}
       </nav>
     </aside>
+  );
+}
+
+function renderNavItem(item: NavItem, activeNav: string) {
+  const { id, label, href } = item;
+  const active = id === activeNav;
+  const className = `flex items-center gap-4 rounded-2xl px-4 py-3 text-left text-[15px] font-bold uppercase tracking-wide transition-colors ${
+    active
+      ? "border-2 border-[#1cb0f6] bg-[#1cb0f6]/10 text-[#1cb0f6]"
+      : "border-2 border-transparent text-[#52656d] hover:bg-white/5 hover:text-[#afafaf] [html[data-theme=light]_&]:text-[#777777] [html[data-theme=light]_&]:hover:bg-black/5 [html[data-theme=light]_&]:hover:text-[#4b4b4b]"
+  }`;
+
+  const content = (
+    <>
+      {"src" in item ? (
+        <NavIcon src={item.src} active={active} />
+      ) : (
+        <item.icon active={active} />
+      )}
+      {label}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link key={id} href={href} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button key={id} type="button" className={className}>
+      {content}
+    </button>
   );
 }
 
