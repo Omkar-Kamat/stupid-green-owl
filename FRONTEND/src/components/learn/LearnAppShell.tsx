@@ -1,12 +1,6 @@
 import { LearnRightPanel } from "@/components/learn/LearnRightPanel";
 import { LearnSidebar } from "@/components/learn/LearnSidebar";
-import {
-  LEARN_STAT_ICONS,
-  LanguagesLearningBadge,
-  LearnStatIcon,
-} from "@/components/learn/LearnStatBadge";
-
-const LANGUAGES_LEARNING = 1;
+import { LearnStatsBar } from "@/components/learn/LearnStatsBar";
 
 export function LearnAppShell({
   children,
@@ -23,12 +17,7 @@ export function LearnAppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between gap-3 px-5 py-4 lg:hidden">
-          <StatPill>
-            <LanguagesLearningBadge count={LANGUAGES_LEARNING} />
-          </StatPill>
-          <StatPill iconSrc={LEARN_STAT_ICONS.streak} value="1" color="text-[#ff9600]" />
-          <StatPill iconSrc={LEARN_STAT_ICONS.gem} value="505" color="text-[#1cb0f6]" />
-          <StatPill iconSrc={LEARN_STAT_ICONS.heart} value="4" color="text-[#ff4b4b]" />
+          <LearnStatsBar />
         </header>
 
         <div className="flex flex-1 justify-center overflow-y-auto px-4 pb-8 lg:px-8">
@@ -43,26 +32,6 @@ export function LearnAppShell({
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function StatPill({
-  children,
-  iconSrc,
-  value,
-  color = "text-white",
-}: {
-  children?: React.ReactNode;
-  iconSrc?: string;
-  value?: string;
-  color?: string;
-}) {
-  return (
-    <div className={`flex items-center gap-2 text-[15px] font-bold ${color}`}>
-      {children}
-      {iconSrc && <LearnStatIcon src={iconSrc} className="h-6 w-6" />}
-      {value !== undefined && <span>{value}</span>}
     </div>
   );
 }

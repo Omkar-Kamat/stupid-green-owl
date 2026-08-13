@@ -1,50 +1,40 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
-import {
-  LEARN_STAT_ICONS,
-  LanguagesLearningBadge,
-  LearnStatBadge,
-} from "@/components/learn/LearnStatBadge";
+import { LearnStatsBar } from "@/components/learn/LearnStatsBar";
 import { LearnRightPanelFooter } from "@/components/learn/LearnRightPanelFooter";
-
-const LANGUAGES_LEARNING = 1;
+import { useOptionalUserStats } from "@/components/providers/UserStatsProvider";
 
 export function LearnRightPanel() {
+  const { stats, loading } = useOptionalUserStats() ?? {};
+
   return (
     <div className="mx-auto flex w-full max-w-[390px] flex-col gap-6 pb-10 pt-2">
-      <div className="flex items-center justify-between px-1 py-2">
-        <LanguagesLearningBadge count={LANGUAGES_LEARNING} />
-        <LearnStatBadge
-          iconSrc={LEARN_STAT_ICONS.streak}
-          value="1"
-          color="text-[#ff9600]"
-        />
-        <LearnStatBadge
-          iconSrc={LEARN_STAT_ICONS.gem}
-          value="505"
-          color="text-[#1cb0f6]"
-        />
-        <LearnStatBadge
-          iconSrc={LEARN_STAT_ICONS.heart}
-          value="4"
-          color="text-[#ff4b4b]"
-        />
+      <div className="px-1 py-2">
+        <LearnStatsBar />
       </div>
 
-      <BronzeLeagueCard />
-      <DailyQuestsCard />
+      <BronzeLeagueCard totalXp={stats?.total_xp} loading={loading} />
+      <DailyQuestsCard dailyGoal={stats?.daily_goal} loading={loading} />
       <LearnRightPanelFooter />
     </div>
   );
 }
 
-function BronzeLeagueCard() {
+function BronzeLeagueCard({
+  totalXp,
+  loading,
+}: {
+  totalXp?: number;
+  loading?: boolean;
+}) {
   return (
     <PanelCard>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="text-[15px] font-extrabold text-white">Bronze League</h3>
+        <h3 className="text-[15px] font-extrabold text-white">Leaderboard</h3>
         <Link
-          href="#"
+          href="/learn/japanese/leaderboards"
           className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#1cb0f6] hover:underline"
         >
           View league
@@ -64,10 +54,10 @@ function BronzeLeagueCard() {
         </div>
         <div className="min-w-0">
           <p className="text-[15px] font-bold leading-snug text-white">
-            You&apos;re ranked #12
+            {loading ? "Loading rank…" : `Total XP: ${totalXp ?? 0}`}
           </p>
           <p className="mt-1 text-[13px] leading-snug text-[#afafaf]">
-            You&apos;ve earned 43 XP this week so far
+            Check leaderboards for your current rank
           </p>
         </div>
       </div>
@@ -75,13 +65,19 @@ function BronzeLeagueCard() {
   );
 }
 
-function DailyQuestsCard() {
+function DailyQuestsCard({
+  dailyGoal = 30,
+  loading,
+}: {
+  dailyGoal?: number;
+  loading?: boolean;
+}) {
   return (
     <PanelCard>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="text-[15px] font-extrabold text-white">Daily Quests</h3>
+        <h3 className="text-[15px] font-extrabold text-white">Daily Goal</h3>
         <Link
-          href="#"
+          href="/learn/japanese/quests"
           className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#1cb0f6] hover:underline"
         >
           View all
@@ -100,26 +96,12 @@ function DailyQuestsCard() {
         />
 
         <div className="min-w-0 flex-1">
-          <p className="mb-3 text-[15px] font-bold text-white">Earn 10 XP</p>
-
-          <div className="flex items-center">
-            <div className="relative h-5 min-w-0 flex-1 overflow-hidden rounded-full bg-[#4a4020]">
-              <div className="absolute inset-0 rounded-full bg-[#ffc800]" />
-              <span className="absolute inset-0 flex items-center justify-center text-[13px] font-bold text-[#a56600]">
-                10 / 10
-              </span>
-            </div>
-
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/illustrations/quest-reward-chest.svg"
-              alt=""
-              width={36}
-              height={36}
-              className="-ml-0.5 h-9 w-9 shrink-0"
-              aria-hidden
-            />
-          </div>
+          <p className="text-[15px] font-bold text-white">
+            {loading ? "Loading…" : `Daily goal: ${dailyGoal} XP`}
+          </p>
+          <p className="mt-1 text-[13px] text-[#afafaf]">
+            Daily XP progress is tracked server-side
+          </p>
         </div>
       </div>
     </PanelCard>

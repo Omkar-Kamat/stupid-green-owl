@@ -1,16 +1,60 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useState } from "react";
+import { meApi } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-errors";
+import { useUserStats } from "@/components/providers/UserStatsProvider";
+
+const HEART_REFILL_COST = 350;
 
 export function ShopContent() {
+  const { stats, refresh, updateStats } = useUserStats();
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleRefill() {
+    setLoading(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const updated = await meApi.refillHearts();
+      updateStats(updated);
+      setMessage("Hearts refilled!");
+      await refresh();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const heartsFull = stats ? stats.hearts >= stats.max_hearts : false;
+  const notEnoughGems = stats ? stats.gems < HEART_REFILL_COST : true;
+
   return (
     <div className="mx-auto w-full max-w-[720px] px-4 pb-16 pt-6 md:px-6">
+      {(message || error) && (
+        <p
+          className={`mb-4 text-[14px] font-bold ${error ? "text-[#ff4b4b]" : "text-[#58cc02]"}`}
+        >
+          {error ?? message}
+        </p>
+      )}
+
       <ShopSection title="Hearts" className="mt-0">
         <ShopItem
           icon={<HeartRefillIcon />}
           title="Refill Hearts"
           description="Get full hearts so you can worry less about making mistakes in a lesson"
           action={
-            <ShopActionButton variant="primary">
-              Get for: <GemInline /> 350
+            <ShopActionButton
+              variant={heartsFull || notEnoughGems ? "disabled" : "primary"}
+              disabled={loading || heartsFull || notEnoughGems}
+              onClick={() => void handleRefill()}
+            >
+              Get for: <GemInline /> {HEART_REFILL_COST}
             </ShopActionButton>
           }
         />
@@ -33,13 +77,13 @@ export function ShopContent() {
           title="Streak Freeze"
           titleExtra={
             <span className="text-[13px] font-extrabold uppercase tracking-wide text-[#58cc02]">
-              2 / 2 equipped
+              Not available via API
             </span>
           }
           description="Streak Freeze allows your streak to remain in place for one full day of inactivity."
           action={
             <ShopActionButton variant="disabled" disabled>
-              Equipped
+              Coming soon
             </ShopActionButton>
           }
         />
@@ -107,10 +151,12 @@ function ShopActionButton({
   children,
   variant,
   disabled,
+  onClick,
 }: {
   children: ReactNode;
   variant: "primary" | "outline-purple" | "disabled";
   disabled?: boolean;
+  onClick?: () => void;
 }) {
   const styles = {
     primary:
@@ -125,6 +171,7 @@ function ShopActionButton({
     <button
       type="button"
       disabled={disabled ?? variant === "disabled"}
+      onClick={onClick}
       className={`inline-flex min-w-[140px] items-center justify-center gap-1.5 rounded-2xl border-2 border-b-4 px-4 py-3 text-[12px] font-extrabold uppercase tracking-wide transition-all active:border-b-2 active:translate-y-[2px] ${styles[variant]}`}
     >
       {children}

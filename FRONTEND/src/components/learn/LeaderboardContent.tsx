@@ -1,26 +1,67 @@
-import {
-  LEADERBOARD_ENTRIES,
-  LEAGUE_DAYS_LEFT,
-  LEAGUE_NAME,
-  PROMOTION_COUNT,
-  type LeaderboardEntry,
-} from "@/data/leaderboard";
+"use client";
+
+import { useEffect, useState } from "react";
+import { leaderboardApi } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-errors";
+import type { LeaderboardEntry as ApiLeaderboardEntry } from "@/lib/api/types";
+import { DEMO_CREDENTIALS } from "@/lib/demoAuth";
+
+const PROMOTION_COUNT = 10;
 
 export function LeaderboardContent() {
+  const [entries, setEntries] = useState<ApiLeaderboardEntry[]>([]);
+  const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await leaderboardApi.getLeaderboard();
+        setEntries(data.entries);
+        setCurrentUserRank(data.current_user_rank);
+      } catch (err) {
+        setError(getApiErrorMessage(err));
+      } finally {
+        setLoading(false);
+      }
+    }
+    void load();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="mx-auto flex w-full max-w-[640px] flex-col items-center px-4 pb-16 pt-8 md:px-6">
+        <p className="text-[15px] font-bold text-[#afafaf]">Loading leaderboard…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto flex w-full max-w-[640px] flex-col items-center px-4 pb-16 pt-8 md:px-6">
+        <p className="text-[15px] font-bold text-[#ff4b4b]">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-[640px] flex-col items-center px-4 pb-16 pt-8 md:px-6">
-      <LeagueHeader />
+      <LeagueHeader currentUserRank={currentUserRank} />
 
       <div className="mt-10 w-full">
-        {LEADERBOARD_ENTRIES.map((entry, index) => {
+        {entries.map((entry, index) => {
           const showPromotionZone =
             entry.rank === PROMOTION_COUNT + 1 &&
-            LEADERBOARD_ENTRIES[index - 1]?.rank === PROMOTION_COUNT;
+            entries[index - 1]?.rank === PROMOTION_COUNT;
 
           return (
-            <div key={entry.rank}>
+            <div key={entry.user_id}>
               {showPromotionZone && <PromotionZoneDivider />}
-              <LeaderboardRow entry={entry} />
+              <LeaderboardRow
+                entry={entry}
+                isCurrentUser={entry.user_id === DEMO_CREDENTIALS.userId}
+              />
             </div>
           );
         })}
@@ -29,7 +70,7 @@ export function LeaderboardContent() {
   );
 }
 
-function LeagueHeader() {
+function LeagueHeader({ currentUserRank }: { currentUserRank: number | null }) {
   return (
     <div className="flex w-full flex-col items-center text-center">
       <div className="mb-6 flex items-end justify-center gap-3">
@@ -53,14 +94,16 @@ function LeagueHeader() {
       </div>
 
       <h1 className="text-[32px] font-extrabold leading-tight text-white md:text-[36px]">
-        {LEAGUE_NAME}
+        Global Leaderboard
       </h1>
       <p className="mt-2 text-[17px] text-[#afafaf] md:text-[19px]">
-        Top {PROMOTION_COUNT} advance to the next league
+        Ranked by total XP
       </p>
-      <p className="mt-2 text-[19px] font-bold text-[#ffc800] md:text-[21px]">
-        {LEAGUE_DAYS_LEFT} days
-      </p>
+      {currentUserRank !== null && (
+        <p className="mt-2 text-[19px] font-bold text-[#ffc800] md:text-[21px]">
+          Your rank: #{currentUserRank}
+        </p>
+      )}
     </div>
   );
 }
@@ -87,24 +130,30 @@ function PromotionZoneDivider() {
   );
 }
 
-function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
+function LeaderboardRow({
+  entry,
+  isCurrentUser,
+}: {
+  entry: ApiLeaderboardEntry;
+  isCurrentUser: boolean;
+}) {
   const inPromotionZone = entry.rank <= PROMOTION_COUNT;
 
   return (
     <div
       className={`mb-3 flex items-center gap-4 rounded-2xl border-2 px-5 py-4 ${
-        entry.isCurrentUser
+        isCurrentUser
           ? "border-[#52656d] bg-[#37464f]/70"
           : "border-[#37464f] bg-[#202f36]/40"
       }`}
     >
       <RankBadge rank={entry.rank} inPromotionZone={inPromotionZone} />
-      <UserAvatar entry={entry} />
+      <UserAvatar entry={entry} isCurrentUser={isCurrentUser} />
       <span className="min-w-0 flex-1 truncate text-[17px] font-bold text-white md:text-[18px]">
-        {entry.name}
+        {entry.username}
       </span>
       <span className="shrink-0 text-[15px] font-bold text-[#afafaf] md:text-[16px]">
-        {entry.xp} XP
+        {entry.total_xp} XP
       </span>
     </div>
   );
@@ -161,8 +210,14 @@ function MedalBadge({
   );
 }
 
-function UserAvatar({ entry }: { entry: LeaderboardEntry }) {
-  if (entry.isCurrentUser) {
+function UserAvatar({
+  entry,
+  isCurrentUser,
+}: {
+  entry: ApiLeaderboardEntry;
+  isCurrentUser: boolean;
+}) {
+  if (isCurrentUser) {
     return (
       <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-[#52656d] bg-[#202f36]">
         <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#131f24] bg-[#58cc02]" />
@@ -170,12 +225,16 @@ function UserAvatar({ entry }: { entry: LeaderboardEntry }) {
     );
   }
 
+  const label = entry.username.slice(0, 1).toUpperCase();
+  const colors = ["#1cb0f6", "#ce82ff", "#ff9600", "#58cc02", "#ff4b4b"];
+  const color = colors[entry.user_id % colors.length];
+
   return (
     <div
       className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[17px] font-extrabold text-white"
-      style={{ backgroundColor: entry.avatarColor }}
+      style={{ backgroundColor: color }}
     >
-      {entry.avatarLabel}
+      {label}
     </div>
   );
 }

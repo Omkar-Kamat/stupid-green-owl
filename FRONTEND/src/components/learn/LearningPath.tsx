@@ -1,82 +1,125 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import {
-  DEFAULT_SECTION,
-  QUESTIONS_PER_UNIT,
-  unitProgressPercent,
-  type CourseSection,
-  type Unit,
-} from "@/data/courseStructure";
-import {
-  activeUnitIndex,
-  getAllUnitProgressWithDemo,
-  unitNodeState,
-  unitRingProgress,
-  type UnitProgress,
-} from "@/lib/unitProgress";
+import { useCallback, useEffect, useState } from "react";
+import { pathApi } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-errors";
+import type { PathResponse, SkillPathResponse, UnitResponse } from "@/lib/api/types";
 
 const RING_RADIUS = 40;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const UNIT_OFFSETS = [0, 56, -56, 56, 0];
 
-export function LearningPath({
-  section = DEFAULT_SECTION,
-}: {
-  section?: CourseSection;
-}) {
-  const unitIds = section.units.map((u) => u.id);
-  const [progressByUnit, setProgressByUnit] = useState<
-    Record<string, UnitProgress>
-  >(() => getAllUnitProgressWithDemo(unitIds));
+/**
+ * Seed data creates one lesson per skill with matching numeric ids (skill 1 → lesson 1).
+ * Backend path only returns skill ids; there is no skill→lesson lookup endpoint yet.
+ */
+function lessonHrefForSkill(skillId: number): string {
+  return `/lesson/${skillId}`;
+}
+
+export function LearningPath() {
+  const [path, setPath] = useState<PathResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadPath = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await pathApi.getPath();
+      setPath(data);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    setProgressByUnit(getAllUnitProgressWithDemo(unitIds));
-  }, [unitIds.join(",")]);
+    void loadPath();
+  }, [loadPath]);
 
-  const activeIndex = activeUnitIndex(section.units, progressByUnit);
-  const activeUnit = section.units[activeIndex];
-  const activeProgress = activeUnit ? progressByUnit[activeUnit.id] : null;
+  if (loading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center px-4">
+        <p className="text-[15px] font-bold text-[#afafaf]">Loading path…</p>
+      </div>
+    );
+  }
+
+  if (error || !path) {
+    return (
+      <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 px-4">
+        <p className="text-center text-[15px] font-bold text-[#ff4b4b]">
+          {error ?? "Could not load learning path."}
+        </p>
+        <button
+          type="button"
+          onClick={() => void loadPath()}
+          className="rounded-2xl border-2 border-b-4 border-[#1899d6] bg-[#1cb0f6] px-5 py-2.5 text-[13px] font-extrabold uppercase tracking-wide text-white"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  const flatSkills = path.units.flatMap((unit, unitIndex) =>
+    unit.skills.map((skill, skillIndex) => ({
+      unit,
+      skill,
+      unitIndex,
+      skillIndex,
+      globalIndex: path.units
+        .slice(0, unitIndex)
+        .reduce((sum, current) => sum + current.skills.length, 0) + skillIndex,
+    })),
+  );
+
+  const activeSkillIndex = flatSkills.findIndex(
+    (item) => item.skill.status === "available",
+  );
+  const activeItem = activeSkillIndex >= 0 ? flatSkills[activeSkillIndex] : flatSkills[0];
 
   return (
     <div className="flex min-h-full flex-col">
-      <UnitBanner
-        section={section}
-        activeUnit={activeUnit}
-        progress={activeProgress}
-      />
+      {activeItem && (
+        <UnitBanner unit={activeItem.unit} skill={activeItem.skill} unitNumber={activeItem.unitIndex + 1} />
+      )}
 
       <div className="relative mx-auto flex w-full max-w-[720px] justify-center px-4 pb-20 pt-16 sm:px-6">
         <div className="relative flex w-[260px] shrink-0 flex-col items-center gap-10">
-          {section.units.map((unit, index) => {
-            const progress = progressByUnit[unit.id];
-            const state =
-              Object.keys(progressByUnit).length > 0
-                ? unitNodeState(section.units, index, progressByUnit)
-                : index === 0
-                  ? "active"
-                  : "locked";
+          {flatSkills.map((item, index) => {
+            const state = skillNodeState(item.skill, index, activeSkillIndex);
+            const ringProgress =
+              item.skill.status === "completed"
+                ? 100
+                : state === "active"
+                  ? 50
+                  : 0;
 
             return (
               <div
-                key={unit.id}
+                key={item.skill.id}
                 className="relative flex w-full justify-center"
-                style={{ transform: `translateX(${unit.offset}px)` }}
+                style={{
+                  transform: `translateX(${UNIT_OFFSETS[item.globalIndex % UNIT_OFFSETS.length]}px)`,
+                }}
               >
-                {index === activeIndex && (
+                {index === activeSkillIndex && (
                   <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-[13px] font-extrabold uppercase tracking-wider text-[#6b6b6b]">
                     {index === 0 ? "Start" : "Continue"}
                   </span>
                 )}
-                <UnitPathNode
-                  unit={unit}
+                <SkillPathNode
+                  skill={item.skill}
                   state={state}
-                  ringProgress={
-                    progress && state === "active"
-                      ? unitRingProgress(progress)
-                      : state === "complete"
-                        ? 100
-                        : 0
+                  ringProgress={ringProgress}
+                  href={
+                    item.skill.status === "locked"
+                      ? undefined
+                      : lessonHrefForSkill(item.skill.id)
                   }
                 />
               </div>
@@ -101,20 +144,14 @@ export function LearningPath({
 }
 
 function UnitBanner({
-  section,
-  activeUnit,
-  progress,
+  unit,
+  skill,
+  unitNumber,
 }: {
-  section: CourseSection;
-  activeUnit?: Unit;
-  progress: UnitProgress | null;
+  unit: UnitResponse;
+  skill: SkillPathResponse;
+  unitNumber: number;
 }) {
-  if (!activeUnit) return null;
-
-  const pct = progress
-    ? Math.round(unitProgressPercent(progress.completedQuestions))
-    : 0;
-
   return (
     <div className="px-4 pt-8 pb-4 md:px-6">
       <div className="w-full rounded-2xl bg-duo-green shadow-[0_4px_0_#3d3d3d]">
@@ -130,17 +167,15 @@ function UnitBanner({
                 className="h-4 w-4"
                 aria-hidden
               />
-              Section {section.number}, Unit {activeUnit.unitNumber}
+              Unit {unitNumber}
             </p>
             <h2 className="mt-1 text-[22px] font-extrabold leading-tight text-white md:text-2xl">
-              {activeUnit.title}
+              {skill.title}
             </h2>
-            {progress && (
-              <p className="mt-1 text-[13px] font-bold text-white/70">
-                {progress.completedQuestions} / {QUESTIONS_PER_UNIT} questions · {pct}%
-                <span className="text-white/50"> · 4 parts × 10 questions</span>
-              </p>
-            )}
+            <p className="mt-1 text-[13px] font-bold text-white/70">
+              {unit.title}
+              {skill.crown_level > 0 ? ` · Crown level ${skill.crown_level}` : ""}
+            </p>
           </div>
           <Link
             href="/learn/japanese/guidebook"
@@ -163,17 +198,29 @@ function UnitBanner({
   );
 }
 
-function UnitPathNode({
-  unit,
+function skillNodeState(
+  skill: SkillPathResponse,
+  index: number,
+  activeIndex: number,
+): "locked" | "active" | "complete" {
+  if (skill.status === "locked") return "locked";
+  if (skill.status === "completed") return "complete";
+  if (index === activeIndex) return "active";
+  return "locked";
+}
+
+function SkillPathNode({
+  skill,
   state,
   ringProgress,
+  href,
 }: {
-  unit: Unit;
+  skill: SkillPathResponse;
   state: "locked" | "active" | "complete";
   ringProgress: number;
+  href?: string;
 }) {
   const filled = (ringProgress / 100) * RING_CIRCUMFERENCE;
-  const href = state === "locked" ? undefined : "/lesson";
 
   const buttonInner = (
     <>
@@ -224,7 +271,7 @@ function UnitPathNode({
               : "border-[#2b3a40] bg-[#37464f] shadow-[0_4px_0_#2b3a40]"
         }`}
       >
-        <UnitNodeIcon type={unit.nodeType} muted={state === "locked"} />
+        <StarIcon muted={state === "locked"} />
       </span>
     </>
   );
@@ -236,7 +283,7 @@ function UnitPathNode({
           <Link
             href={href}
             className="relative flex h-full w-full items-center justify-center"
-            aria-label={unit.title}
+            aria-label={skill.title}
           >
             {buttonInner}
           </Link>
@@ -252,25 +299,11 @@ function UnitPathNode({
       type="button"
       disabled
       className="flex h-[70px] w-[70px] items-center justify-center rounded-full border-b-[6px] border-[#2b3a40] bg-[#37464f] shadow-[0_4px_0_#2b3a40]"
-      aria-label={`${unit.title} (locked)`}
+      aria-label={`${skill.title} (locked)`}
     >
-      <UnitNodeIcon type={unit.nodeType} muted />
+      <StarIcon muted />
     </button>
   );
-}
-
-function UnitNodeIcon({
-  type,
-  muted = false,
-}: {
-  type: Unit["nodeType"];
-  muted?: boolean;
-}) {
-  if (type === "star" || type === "start") {
-    return <StarIcon muted={muted} />;
-  }
-  if (type === "chest") return <ChestIcon />;
-  return <TrophyIcon />;
 }
 
 function StarIcon({ muted = false }: { muted?: boolean }) {
@@ -280,25 +313,6 @@ function StarIcon({ muted = false }: { muted?: boolean }) {
       <path
         fill={fill}
         d="M12 2l2.9 6.5L22 9.5l-5 4.8 1.2 6.9L12 17.8 5.8 21.2 7 14.3 2 9.5l7.1-1L12 2z"
-      />
-    </svg>
-  );
-}
-
-function ChestIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
-      <path fill="#52656d" d="M4 8h16v11H4V8zm2-5h12v5H6V3zm4 9v3h4v-3h-4z" />
-    </svg>
-  );
-}
-
-function TrophyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
-      <path
-        fill="#52656d"
-        d="M6 4h12v3c0 3.3-2.3 6.1-5.5 6.8V17h3v2H8v-2h3v-3.2C7.3 13.1 5 10.3 5 7V4zm2 2v1c0 2.2 1.8 4 4 4s4-1.8 4-4V6H8z"
       />
     </svg>
   );

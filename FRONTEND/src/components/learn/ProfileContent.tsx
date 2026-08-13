@@ -1,18 +1,69 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { PROFILE } from "@/data/profile";
+import { useEffect, useState } from "react";
+import { meApi } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-errors";
+import type { UserResponse, UserStatsResponse } from "@/lib/api/types";
 
 export function ProfileContent() {
+  const [profile, setProfile] = useState<UserResponse | null>(null);
+  const [stats, setStats] = useState<UserStatsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [user, userStats] = await Promise.all([
+          meApi.getProfile(),
+          meApi.getStats(),
+        ]);
+        setProfile(user);
+        setStats(userStats);
+      } catch (err) {
+        setError(getApiErrorMessage(err));
+      } finally {
+        setLoading(false);
+      }
+    }
+    void load();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-[720px] px-4 pb-16 pt-6 md:px-6">
+        <p className="text-[15px] font-bold text-[#afafaf]">Loading profile…</p>
+      </div>
+    );
+  }
+
+  if (error || !profile || !stats) {
+    return (
+      <div className="mx-auto w-full max-w-[720px] px-4 pb-16 pt-6 md:px-6">
+        <p className="text-[15px] font-bold text-[#ff4b4b]">
+          {error ?? "Could not load profile."}
+        </p>
+      </div>
+    );
+  }
+
+  const joined = new Date(profile.created_at).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+
   return (
     <div className="mx-auto w-full max-w-[720px] px-4 pb-16 pt-6 md:px-6">
-      <ProfileHeader />
-      <StatisticsSection />
+      <ProfileHeader username={profile.username} joined={joined} />
+      <StatisticsSection stats={stats} />
       <AchievementsSection />
     </div>
   );
 }
 
-function ProfileHeader() {
+function ProfileHeader({ username, joined }: { username: string; joined: string }) {
   return (
     <section className="relative">
       <button
@@ -44,23 +95,13 @@ function ProfileHeader() {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-[28px] font-extrabold text-white md:text-[32px]">
-            {PROFILE.displayName}
+            {username}
           </h1>
-          <p className="mt-1 text-[15px] font-bold text-[#afafaf]">
-            @{PROFILE.username}
-          </p>
+          <p className="mt-1 text-[15px] font-bold text-[#afafaf]">@{username}</p>
           <p className="mt-2 flex items-center gap-1.5 text-[14px] font-bold text-[#52656d]">
             <CalendarIcon />
-            Joined {PROFILE.joined}
+            Joined {joined}
           </p>
-          <div className="mt-3 flex items-center gap-4 text-[15px] font-bold">
-            <Link href="#" className="text-[#1cb0f6] hover:underline">
-              {PROFILE.following} Following
-            </Link>
-            <Link href="#" className="text-[#1cb0f6] hover:underline">
-              {PROFILE.followers} Followers
-            </Link>
-          </div>
         </div>
 
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -76,21 +117,19 @@ function ProfileHeader() {
   );
 }
 
-function StatisticsSection() {
-  const { stats } = PROFILE;
-
+function StatisticsSection({ stats }: { stats: UserStatsResponse }) {
   return (
     <section className="mt-10">
       <h2 className="mb-4 text-[22px] font-extrabold text-white">Statistics</h2>
       <div className="grid grid-cols-2 gap-3">
         <StatCard
           icon={<StreakStatIcon />}
-          value={String(stats.streak)}
+          value={String(stats.current_streak)}
           label="Day streak"
         />
         <StatCard
           icon={<XpStatIcon />}
-          value={String(stats.totalXp)}
+          value={String(stats.total_xp)}
           label="Total XP"
         />
         <StatCard
@@ -105,14 +144,13 @@ function StatisticsSection() {
               aria-hidden
             />
           }
-          value={stats.league}
-          label="Current league"
-          badge={stats.leagueWeek}
+          value={`${stats.hearts}/${stats.max_hearts}`}
+          label="Hearts"
         />
         <StatCard
           icon={<MedalStatIcon />}
-          value={String(stats.top3Finishes)}
-          label="Top 3 finishes"
+          value={String(stats.gems)}
+          label="Gems"
         />
       </div>
     </section>
@@ -157,65 +195,12 @@ function AchievementsSection() {
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border-2 border-duo-dark-border bg-duo-dark-input">
-        {PROFILE.achievements.map((achievement, index) => (
-          <div key={achievement.id}>
-            {index > 0 && <div className="mx-5 h-px bg-[#37464f]" />}
-            <AchievementRow achievement={achievement} />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function AchievementRow({
-  achievement,
-}: {
-  achievement: (typeof PROFILE.achievements)[number];
-}) {
-  const pct = Math.min(100, (achievement.progress / achievement.total) * 100);
-
-  return (
-    <div className="flex items-start gap-4 p-5">
-      <AchievementIcon type={achievement.icon} color={achievement.color} />
-
-      <div className="min-w-0 flex-1">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <p className="text-[17px] font-extrabold text-white">
-            {achievement.name}
-            <span className="ml-1 text-[#afafaf]"> {achievement.level}</span>
-          </p>
-          <span className="shrink-0 text-[14px] font-bold text-[#afafaf]">
-            {achievement.progress}/{achievement.total}
-          </span>
-        </div>
-
-        <div className="relative h-4 overflow-hidden rounded-full bg-[#37464f]">
-          <div
-            className="absolute inset-y-0 left-0 rounded-full bg-[#ffc800]"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-
-        <p className="mt-2 text-[14px] font-bold text-[#afafaf]">
-          {achievement.description}
+      <div className="rounded-2xl border-2 border-duo-dark-border bg-duo-dark-input p-5">
+        <p className="text-[14px] font-bold text-[#afafaf]">
+          Achievements are not available from the backend yet.
         </p>
       </div>
-    </div>
-  );
-}
-
-function AchievementIcon({ type, color }: { type: string; color: string }) {
-  return (
-    <div
-      className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl"
-      style={{ backgroundColor: color }}
-    >
-      {type === "flame" && <FlameIcon />}
-      {type === "sage" && <SageIcon />}
-      {type === "champion" && <ChampionIcon />}
-    </div>
+    </section>
   );
 }
 
@@ -274,38 +259,7 @@ function XpStatIcon() {
 
 function MedalStatIcon() {
   return (
-    <svg viewBox="0 0 32 32" className="h-8 w-8" aria-hidden="true">
-      <circle cx="16" cy="14" r="10" fill="#afafaf" />
-      <path d="M10 24 L16 30 L22 24" fill="#777777" />
-      <text x="16" y="18" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">
-        3
-      </text>
-    </svg>
-  );
-}
-
-function FlameIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-8 w-8 text-white" fill="currentColor" aria-hidden="true">
-      <path d="M12 2c1 4 4 6 4 10a4 4 0 11-8 0c0-2 1.5-3.5 3-5 0 3 2 5 1 7z" />
-    </svg>
-  );
-}
-
-function SageIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-8 w-8" aria-hidden="true">
-      <circle cx="12" cy="10" r="6" fill="#fff" />
-      <path d="M6 20c0-4 2.7-6 6-6s6 2 6 6" fill="#fff" />
-      <path d="M8 8 L12 4 L16 8" fill="#58cc02" />
-    </svg>
-  );
-}
-
-function ChampionIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-8 w-8 text-white" fill="currentColor" aria-hidden="true">
-      <path d="M6 2h12v4l-2 2 2 2v12H6V10l2-2-2-2V2z" />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/illustrations/gem.svg" alt="" width={32} height={32} className="h-8 w-8" aria-hidden />
   );
 }
