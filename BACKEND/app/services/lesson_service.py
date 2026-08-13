@@ -8,11 +8,11 @@ class LessonService:
         self.progress_repo = progress_repo
 
     def get_path(self, user_id: int) -> PathResponse:
-        units = self.lesson_repo.get_course_tree()
+        units = self.lesson_repo.get_course_tree(course_id=1)
         user_progress = self.progress_repo.get_user_progress(user_id)
         
         unit_responses = []
-        is_first_uncompleted_found = False
+        is_first_skill_overall = True
 
         for unit in units:
             sorted_skills = sorted(unit.skills, key=lambda s: s.order_index)
@@ -22,12 +22,14 @@ class LessonService:
                 progress = user_progress.get(skill.id)
                 crown_level = progress.crown_level if progress else 0
                 
-                # Derive status dynamically based on cascade rules
-                if progress and progress.status.value == "completed":
-                    status = "completed"
-                elif not is_first_uncompleted_found:
+                # Trust the database state if it exists. 
+                # Only derive default initial state if no progress record exists.
+                if progress:
+                    status = progress.status.value
+                    is_first_skill_overall = False
+                elif is_first_skill_overall:
                     status = "available"
-                    is_first_uncompleted_found = True
+                    is_first_skill_overall = False
                 else:
                     status = "locked"
                 

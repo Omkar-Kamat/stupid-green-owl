@@ -35,6 +35,7 @@ def test_get_path_no_progress(db):
 def test_get_path_with_progress(db):
     skill1, skill2, skill3 = setup_course(db)
     db.add(SkillProgress(user_id=1, skill_id=skill1.id, status=ProgressStatus.completed))
+    db.add(SkillProgress(user_id=1, skill_id=skill2.id, status=ProgressStatus.available))
     db.commit()
 
     lesson_repo = LessonRepository(db)

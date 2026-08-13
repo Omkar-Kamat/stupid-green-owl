@@ -5,8 +5,8 @@ class LessonRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_course_tree(self) -> list[Unit]:
-        course = self.db.query(Course).first()
+    def get_course_tree(self, course_id: int = 1) -> list[Unit]:
+        course = self.db.query(Course).filter(Course.id == course_id).first()
         if not course:
             return []
         

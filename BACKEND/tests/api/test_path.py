@@ -11,8 +11,9 @@ def test_read_learning_path(client, db):
     skill2 = Skill(unit_id=unit.id, title="Skill 2", icon="hand", order_index=1)
     db.add_all([skill1, skill2])
     db.flush()
-    progress = SkillProgress(user_id=1, skill_id=skill1.id, status=ProgressStatus.completed)
-    db.add(progress)
+    progress1 = SkillProgress(user_id=1, skill_id=skill1.id, status=ProgressStatus.completed)
+    progress2 = SkillProgress(user_id=1, skill_id=skill2.id, status=ProgressStatus.available)
+    db.add_all([progress1, progress2])
     db.commit()
 
     response = client.get("/api/v1/path")
