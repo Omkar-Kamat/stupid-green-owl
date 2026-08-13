@@ -188,7 +188,7 @@ class LessonService:
                 attempt.current_exercise_index += 1
             else:
                 attempt.hearts_lost += 1
-                stats.hearts = max(0, stats.hearts - 1)
+                self.gamification_service.consume_heart(stats)
                 
                 if stats.hearts == 0:
                     attempt.status = AttemptStatus.failed
@@ -234,7 +234,7 @@ class LessonService:
                     xp_awarded=attempt.xp_awarded,
                     total_xp=stats.total_xp,
                     streak=stats.current_streak,
-                    crown_earned=False
+                    crown_earned=bool(attempt.crown_earned)
                 )
             else:
                 raise ConflictError("ATTEMPT_ALREADY_TERMINATED")
@@ -245,6 +245,9 @@ class LessonService:
             
         if attempt.current_exercise_index < len(lesson.exercises):
             raise ConflictError("LESSON_INCOMPLETE")
+            
+        if attempt.current_exercise_index > len(lesson.exercises):
+            raise ConflictError("CORRUPTED_LESSON_STATE")
             
         skill = self.lesson_repo.get_skill(lesson.skill_id)
         if not skill:
@@ -258,6 +261,7 @@ class LessonService:
             
             attempt.status = AttemptStatus.completed
             attempt.xp_awarded = xp_reward
+            attempt.crown_earned = crown_earned
             attempt.completed_at = datetime.now(timezone.utc)
             
             self.attempt_repo.db.commit()

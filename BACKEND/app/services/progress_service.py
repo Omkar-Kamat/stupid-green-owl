@@ -18,7 +18,7 @@ class ProgressService:
                 lessons_completed_in_level=0,
                 xp_earned=0
             )
-            self.progress_repo.upsert_skill_progress(progress)
+            self.progress_repo.create_skill_progress(progress)
             
         progress.xp_earned += xp_reward
         progress.lessons_completed_in_level += 1
@@ -43,6 +43,8 @@ class ProgressService:
                             lessons_completed_in_level=0,
                             xp_earned=0
                         )
-                        self.progress_repo.upsert_skill_progress(next_progress)
+                        self.progress_repo.create_skill_progress(next_progress)
+                    elif next_progress.status == ProgressStatus.locked:
+                        next_progress.status = ProgressStatus.available
                         
         return crown_earned

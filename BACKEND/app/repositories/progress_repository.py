@@ -15,7 +15,7 @@ class ProgressRepository:
             SkillProgress.skill_id == skill_id
         ).first()
 
-    def upsert_skill_progress(self, progress: SkillProgress) -> SkillProgress:
+    def create_skill_progress(self, progress: SkillProgress) -> SkillProgress:
         self.db.add(progress)
         self.db.flush()
         return progress

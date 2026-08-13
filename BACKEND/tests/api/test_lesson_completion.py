@@ -96,7 +96,7 @@ def test_failed_attempt(client, db, setup_completion_data):
 def test_idempotent_retry(client, db, setup_completion_data):
     attempt = LessonAttempt(
         user_id=1, lesson_id=1, status=AttemptStatus.completed, 
-        current_exercise_index=2, xp_awarded=15
+        current_exercise_index=2, xp_awarded=15, crown_earned=True
     )
     db.add(attempt)
     db.commit()
@@ -106,7 +106,7 @@ def test_idempotent_retry(client, db, setup_completion_data):
     data = res.json()
     assert data["xp_awarded"] == 15
     assert data["total_xp"] == 100 # Original stats
-    assert data["crown_earned"] == False
+    assert data["crown_earned"] == True
 
 def test_same_day_streak(client, db, setup_completion_data):
     stats = db.query(UserStats).filter_by(user_id=1).first()
@@ -159,3 +159,9 @@ def test_transaction_rollback(client, db, setup_completion_data, monkeypatch):
     
     stats = db.query(UserStats).filter_by(user_id=1).first()
     assert stats.total_xp == 100
+    
+    progress = db.query(SkillProgress).filter_by(user_id=1, skill_id=1).first()
+    assert progress.xp_earned == 0
+    assert progress.lessons_completed_in_level == 1
+    assert progress.crown_level == 0
+    assert progress.status == ProgressStatus.available

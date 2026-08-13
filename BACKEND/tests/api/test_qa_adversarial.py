@@ -138,3 +138,25 @@ def test_answer_incorrect_when_hearts_zero(client, db, qa_setup_data):
     
     db.refresh(attempt)
     assert attempt.status == AttemptStatus.failed
+
+def test_answer_after_completion_returns_409(client, db, qa_setup_data):
+    from app.models.domain import LessonAttempt, AttemptStatus
+    attempt = LessonAttempt(id=104, user_id=1, lesson_id=1, status=AttemptStatus.completed, current_exercise_index=2, hearts_lost=0)
+    db.add(attempt)
+    db.commit()
+
+    res = client.post("/api/v1/lesson-attempts/104/answers", json={"exercise_id": 1, "answer": "A"})
+    assert res.status_code == 409
+    assert res.json()["detail"] == "ATTEMPT_ALREADY_TERMINATED"
+
+def test_start_locked_skill_returns_403(client, db, qa_setup_data):
+    from app.models.domain import SkillProgress, ProgressStatus
+    # Set skill 1 to locked explicitly
+    prog = SkillProgress(user_id=1, skill_id=1, status=ProgressStatus.locked)
+    db.add(prog)
+    db.commit()
+
+    # user tries to start lesson 1 (which belongs to skill 1)
+    res = client.post("/api/v1/lessons/1/start")
+    assert res.status_code == 403
+    assert res.json()["detail"] == "SKILL_LOCKED"

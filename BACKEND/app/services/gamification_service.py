@@ -2,6 +2,9 @@ from datetime import datetime, timezone
 from app.models.domain import UserStats
 
 class GamificationService:
+    def consume_heart(self, user_stats: UserStats) -> None:
+        user_stats.hearts = max(0, user_stats.hearts - 1)
+
     def handle_lesson_completed(self, user_stats: UserStats, xp_reward: int) -> None:
         today = datetime.now(timezone.utc).date()
         
