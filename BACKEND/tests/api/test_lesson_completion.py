@@ -55,6 +55,7 @@ def test_successful_completion_and_crown_cascade(client, db, setup_completion_da
     assert attempt.status == AttemptStatus.completed
     assert attempt.xp_awarded == 15
     assert attempt.completed_at is not None
+    assert attempt.crown_earned is True
     
     stats = db.query(UserStats).filter_by(user_id=1).first()
     assert stats.total_xp == 115
@@ -165,3 +166,20 @@ def test_transaction_rollback(client, db, setup_completion_data, monkeypatch):
     assert progress.lessons_completed_in_level == 1
     assert progress.crown_level == 0
     assert progress.status == ProgressStatus.available
+
+def test_successful_completion_promotes_locked_progress(client, db, setup_completion_data):
+    # Set skill 2 to explicitly locked in DB
+    prog2_initial = SkillProgress(user_id=1, skill_id=2, status=ProgressStatus.locked)
+    db.add(prog2_initial)
+    db.commit()
+
+    attempt = LessonAttempt(user_id=1, lesson_id=1, status=AttemptStatus.in_progress, current_exercise_index=2)
+    db.add(attempt)
+    db.commit()
+
+    res = client.post(f"/api/v1/lesson-attempts/{attempt.id}/complete")
+    assert res.status_code == 200
+
+    prog2 = db.query(SkillProgress).filter_by(user_id=1, skill_id=2).first()
+    assert prog2 is not None
+    assert prog2.status == ProgressStatus.available
