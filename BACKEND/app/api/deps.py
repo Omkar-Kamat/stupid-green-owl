@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.repositories.user_repository import UserRepository, UserStatsRepository
 from app.repositories.lesson_repository import LessonRepository
 from app.repositories.progress_repository import ProgressRepository
+from app.repositories.attempt_repository import AttemptRepository
 from app.services.user_service import UserService
 from app.services.lesson_service import LessonService
 
@@ -31,8 +32,18 @@ def get_lesson_repo(db: Session = Depends(get_db)) -> LessonRepository:
 def get_progress_repo(db: Session = Depends(get_db)) -> ProgressRepository:
     return ProgressRepository(db)
 
+def get_attempt_repo(db: Session = Depends(get_db)) -> AttemptRepository:
+    return AttemptRepository(db)
+
 def get_lesson_service(
     lesson_repo: LessonRepository = Depends(get_lesson_repo),
-    progress_repo: ProgressRepository = Depends(get_progress_repo)
+    progress_repo: ProgressRepository = Depends(get_progress_repo),
+    attempt_repo: AttemptRepository = Depends(get_attempt_repo),
+    stats_repo: UserStatsRepository = Depends(get_stats_repo)
 ) -> LessonService:
-    return LessonService(lesson_repo=lesson_repo, progress_repo=progress_repo)
+    return LessonService(
+        lesson_repo=lesson_repo, 
+        progress_repo=progress_repo,
+        attempt_repo=attempt_repo,
+        user_stats_repo=stats_repo
+    )

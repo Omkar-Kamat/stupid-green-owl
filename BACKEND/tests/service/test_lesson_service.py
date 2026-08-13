@@ -2,6 +2,8 @@ import pytest
 from app.models.domain import Course, Unit, Skill, SkillProgress, ProgressStatus
 from app.repositories.lesson_repository import LessonRepository
 from app.repositories.progress_repository import ProgressRepository
+from app.repositories.attempt_repository import AttemptRepository
+from app.repositories.user_repository import UserStatsRepository
 from app.services.lesson_service import LessonService
 
 def setup_course(db):
@@ -23,7 +25,9 @@ def test_get_path_no_progress(db):
     
     lesson_repo = LessonRepository(db)
     prog_repo = ProgressRepository(db)
-    service = LessonService(lesson_repo, prog_repo)
+    attempt_repo = AttemptRepository(db)
+    stats_repo = UserStatsRepository(db)
+    service = LessonService(lesson_repo, prog_repo, attempt_repo, stats_repo)
     
     path = service.get_path(user_id=1)
     
@@ -40,7 +44,9 @@ def test_get_path_with_progress(db):
 
     lesson_repo = LessonRepository(db)
     prog_repo = ProgressRepository(db)
-    service = LessonService(lesson_repo, prog_repo)
+    attempt_repo = AttemptRepository(db)
+    stats_repo = UserStatsRepository(db)
+    service = LessonService(lesson_repo, prog_repo, attempt_repo, stats_repo)
     
     path = service.get_path(user_id=1)
     

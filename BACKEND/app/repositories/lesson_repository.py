@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, selectinload
-from app.models.domain import Course, Unit
+from app.models.domain import Course, Unit, Lesson
 from app.core.config import settings
 
 class LessonRepository:
@@ -18,3 +18,14 @@ class LessonRepository:
             .order_by(Unit.order_index)
             .all()
         )
+
+    def get_lesson_with_exercises(self, lesson_id: int) -> Lesson | None:
+        lesson = (
+            self.db.query(Lesson)
+            .filter(Lesson.id == lesson_id)
+            .options(selectinload(Lesson.exercises))
+            .first()
+        )
+        if lesson:
+            lesson.exercises.sort(key=lambda e: e.order_index)
+        return lesson

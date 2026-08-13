@@ -58,3 +58,19 @@ def test_negative_xp_earned_rejected(db, base_data):
     db.add(progress)
     with pytest.raises(IntegrityError):
         db.commit()
+
+def test_unique_active_attempt_invariant(db, base_data):
+    user, lesson, skill = base_data
+    attempt1 = LessonAttempt(
+        user_id=user.id, lesson_id=lesson.id, status=AttemptStatus.in_progress
+    )
+    db.add(attempt1)
+    db.commit()
+    
+    attempt2 = LessonAttempt(
+        user_id=user.id, lesson_id=lesson.id, status=AttemptStatus.in_progress
+    )
+    db.add(attempt2)
+    with pytest.raises(IntegrityError) as exc_info:
+        db.commit()
+    assert "UNIQUE constraint failed" in str(exc_info.value)
