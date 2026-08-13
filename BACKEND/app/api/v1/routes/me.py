@@ -18,3 +18,10 @@ def read_user_stats(
     user_service: UserService = Depends(get_user_service)
 ):
     return user_service.get_my_stats(current_user_id)
+
+@router.post("/hearts/refill", response_model=UserStatsResponse)
+def refill_hearts(
+    current_user_id: int = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    return user_service.refill_hearts(current_user_id)

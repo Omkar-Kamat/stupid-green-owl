@@ -75,6 +75,7 @@ def test_incorrect_answer(client, db, setup_data):
     
     stats = db.query(UserStats).filter_by(user_id=1).first()
     assert stats.hearts == 4
+    assert stats.last_heart_lost_at is not None
 
 def test_incorrect_answer_exhausting_hearts(client, db, setup_data):
     stats = db.query(UserStats).filter_by(user_id=1).first()

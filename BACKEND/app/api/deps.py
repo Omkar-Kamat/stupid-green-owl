@@ -24,11 +24,15 @@ def get_user_repo(db: Session = Depends(get_db)) -> UserRepository:
 def get_stats_repo(db: Session = Depends(get_db)) -> UserStatsRepository:
     return UserStatsRepository(db)
 
+def get_gamification_service() -> GamificationService:
+    return GamificationService()
+
 def get_user_service(
     user_repo: UserRepository = Depends(get_user_repo),
-    stats_repo: UserStatsRepository = Depends(get_stats_repo)
+    stats_repo: UserStatsRepository = Depends(get_stats_repo),
+    gamification_service: GamificationService = Depends(get_gamification_service)
 ) -> UserService:
-    return UserService(user_repo=user_repo, stats_repo=stats_repo)
+    return UserService(user_repo=user_repo, stats_repo=stats_repo, gamification_service=gamification_service)
 
 def get_lesson_repo(db: Session = Depends(get_db)) -> LessonRepository:
     return LessonRepository(db)
@@ -39,8 +43,7 @@ def get_progress_repo(db: Session = Depends(get_db)) -> ProgressRepository:
 def get_attempt_repo(db: Session = Depends(get_db)) -> AttemptRepository:
     return AttemptRepository(db)
 
-def get_gamification_service() -> GamificationService:
-    return GamificationService()
+
 
 def get_progress_service(
     progress_repo: ProgressRepository = Depends(get_progress_repo),

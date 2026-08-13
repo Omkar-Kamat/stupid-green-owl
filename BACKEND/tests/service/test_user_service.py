@@ -2,6 +2,7 @@ import pytest
 from app.models.domain import User, UserStats
 from app.repositories.user_repository import UserRepository, UserStatsRepository
 from app.services.user_service import UserService
+from app.services.gamification_service import GamificationService
 from app.core.exceptions import NotFoundError
 
 def test_get_me_success(db):
@@ -11,7 +12,7 @@ def test_get_me_success(db):
 
     repo = UserRepository(db)
     stats_repo = UserStatsRepository(db)
-    service = UserService(repo, stats_repo)
+    service = UserService(repo, stats_repo, GamificationService())
 
     result = service.get_me(1)
     assert result.username == "test_user"
@@ -19,7 +20,7 @@ def test_get_me_success(db):
 def test_get_me_not_found(db):
     repo = UserRepository(db)
     stats_repo = UserStatsRepository(db)
-    service = UserService(repo, stats_repo)
+    service = UserService(repo, stats_repo, GamificationService())
 
     with pytest.raises(NotFoundError) as excinfo:
         service.get_me(999)
@@ -35,7 +36,7 @@ def test_get_my_stats_success(db):
 
     repo = UserRepository(db)
     stats_repo = UserStatsRepository(db)
-    service = UserService(repo, stats_repo)
+    service = UserService(repo, stats_repo, GamificationService())
 
     result = service.get_my_stats(1)
     assert result.total_xp == 100
