@@ -25,3 +25,10 @@ class AnswerResponse(BaseModel):
     hearts_remaining: int
     next_exercise_index: int
     lesson_failed: bool
+
+class CompleteResponse(BaseModel):
+    xp_awarded: int
+    total_xp: int
+    streak: int
+    crown_earned: bool
+

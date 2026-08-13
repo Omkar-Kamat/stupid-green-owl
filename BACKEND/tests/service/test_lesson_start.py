@@ -4,6 +4,8 @@ from app.repositories.lesson_repository import LessonRepository
 from app.repositories.progress_repository import ProgressRepository
 from app.repositories.attempt_repository import AttemptRepository
 from app.repositories.user_repository import UserStatsRepository
+from app.services.gamification_service import GamificationService
+from app.services.progress_service import ProgressService
 from sqlalchemy.exc import IntegrityError
 from app.models.domain import LessonAttempt, AttemptStatus, Course, Unit, Skill, Lesson, Exercise, ExerciseType, User, UserStats, SkillProgress, ProgressStatus
 
@@ -37,8 +39,10 @@ def test_concurrency_recovery(db, setup_service_data):
     progress_repo = ProgressRepository(db)
     attempt_repo = AttemptRepository(db)
     user_stats_repo = UserStatsRepository(db)
+    gamification_service = GamificationService()
+    progress_service = ProgressService(progress_repo, lesson_repo)
     
-    service = LessonService(lesson_repo, progress_repo, attempt_repo, user_stats_repo)
+    service = LessonService(lesson_repo, progress_repo, attempt_repo, user_stats_repo, gamification_service, progress_service)
     
     create_calls = 0
     original_create = attempt_repo.create_attempt

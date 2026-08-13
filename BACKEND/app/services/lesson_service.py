@@ -3,13 +3,15 @@ from app.repositories.progress_repository import ProgressRepository
 from app.repositories.attempt_repository import AttemptRepository
 from app.repositories.user_repository import UserStatsRepository
 from app.schemas.path import PathResponse, UnitResponse, SkillPathResponse
-from app.schemas.lesson import StartLessonResponse, ExerciseResponse, AnswerRequest, AnswerResponse
+from app.schemas.lesson import StartLessonResponse, ExerciseResponse, AnswerRequest, AnswerResponse, CompleteResponse
 from app.services.evaluators import EVALUATORS
 from datetime import datetime, timezone
 from app.models.domain import LessonAttempt, AttemptStatus, ExerciseAttempt
 from app.core.config import settings
 from app.core.exceptions import NotFoundError, ForbiddenError, ConflictError
 from sqlalchemy.exc import IntegrityError
+from app.services.gamification_service import GamificationService
+from app.services.progress_service import ProgressService
 
 class LessonService:
     def __init__(
@@ -17,12 +19,16 @@ class LessonService:
         lesson_repo: LessonRepository, 
         progress_repo: ProgressRepository,
         attempt_repo: AttemptRepository,
-        user_stats_repo: UserStatsRepository
+        user_stats_repo: UserStatsRepository,
+        gamification_service: GamificationService,
+        progress_service: ProgressService
     ):
         self.lesson_repo = lesson_repo
         self.progress_repo = progress_repo
         self.attempt_repo = attempt_repo
         self.user_stats_repo = user_stats_repo
+        self.gamification_service = gamification_service
+        self.progress_service = progress_service
 
     def get_path(self, user_id: int) -> PathResponse:
         units = self.lesson_repo.get_course_tree(course_id=settings.DEFAULT_COURSE_ID)
@@ -206,3 +212,62 @@ class LessonService:
             next_exercise_index=attempt.current_exercise_index,
             lesson_failed=lesson_failed
         )
+
+    def complete_lesson(self, user_id: int, attempt_id: int) -> CompleteResponse:
+        attempt = self.attempt_repo.get_attempt_by_id(attempt_id)
+        if not attempt:
+            raise NotFoundError("ATTEMPT", attempt_id)
+            
+        if attempt.user_id != user_id:
+            raise ForbiddenError("ATTEMPT_FORBIDDEN")
+            
+        if attempt.status == AttemptStatus.failed:
+            raise ConflictError("ATTEMPT_ALREADY_TERMINATED")
+            
+        stats = self.user_stats_repo.get_stats_by_user_id(user_id)
+        if not stats:
+            raise ConflictError("CORRUPTED_USER_STATS")
+            
+        if attempt.status == AttemptStatus.completed:
+            if attempt.xp_awarded is not None:
+                return CompleteResponse(
+                    xp_awarded=attempt.xp_awarded,
+                    total_xp=stats.total_xp,
+                    streak=stats.current_streak,
+                    crown_earned=False
+                )
+            else:
+                raise ConflictError("ATTEMPT_ALREADY_TERMINATED")
+                
+        lesson = self.lesson_repo.get_lesson_with_exercises(attempt.lesson_id)
+        if not lesson:
+            raise ConflictError("CORRUPTED_LESSON_STATE")
+            
+        if attempt.current_exercise_index < len(lesson.exercises):
+            raise ConflictError("LESSON_INCOMPLETE")
+            
+        skill = self.lesson_repo.get_skill(lesson.skill_id)
+        if not skill:
+            raise ConflictError("CORRUPTED_LESSON_STATE")
+            
+        xp_reward = skill.xp_reward_per_lesson
+        
+        try:
+            self.gamification_service.handle_lesson_completed(stats, xp_reward)
+            crown_earned = self.progress_service.handle_lesson_completed(user_id, skill, xp_reward)
+            
+            attempt.status = AttemptStatus.completed
+            attempt.xp_awarded = xp_reward
+            attempt.completed_at = datetime.now(timezone.utc)
+            
+            self.attempt_repo.db.commit()
+            
+            return CompleteResponse(
+                xp_awarded=xp_reward,
+                total_xp=stats.total_xp,
+                streak=stats.current_streak,
+                crown_earned=crown_earned
+            )
+        except Exception:
+            self.attempt_repo.db.rollback()
+            raise

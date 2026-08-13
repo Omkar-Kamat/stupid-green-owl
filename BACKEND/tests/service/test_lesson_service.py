@@ -5,6 +5,8 @@ from app.repositories.progress_repository import ProgressRepository
 from app.repositories.attempt_repository import AttemptRepository
 from app.repositories.user_repository import UserStatsRepository
 from app.services.lesson_service import LessonService
+from app.services.gamification_service import GamificationService
+from app.services.progress_service import ProgressService
 
 def setup_course(db):
     course = Course(name="Test", source_language="en", target_language="es")
@@ -27,7 +29,9 @@ def test_get_path_no_progress(db):
     prog_repo = ProgressRepository(db)
     attempt_repo = AttemptRepository(db)
     stats_repo = UserStatsRepository(db)
-    service = LessonService(lesson_repo, prog_repo, attempt_repo, stats_repo)
+    gamification_service = GamificationService()
+    progress_service = ProgressService(prog_repo, lesson_repo)
+    service = LessonService(lesson_repo, prog_repo, attempt_repo, stats_repo, gamification_service, progress_service)
     
     path = service.get_path(user_id=1)
     
@@ -46,7 +50,9 @@ def test_get_path_with_progress(db):
     prog_repo = ProgressRepository(db)
     attempt_repo = AttemptRepository(db)
     stats_repo = UserStatsRepository(db)
-    service = LessonService(lesson_repo, prog_repo, attempt_repo, stats_repo)
+    gamification_service = GamificationService()
+    progress_service = ProgressService(prog_repo, lesson_repo)
+    service = LessonService(lesson_repo, prog_repo, attempt_repo, stats_repo, gamification_service, progress_service)
     
     path = service.get_path(user_id=1)
     

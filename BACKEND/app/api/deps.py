@@ -9,6 +9,8 @@ from app.repositories.progress_repository import ProgressRepository
 from app.repositories.attempt_repository import AttemptRepository
 from app.services.user_service import UserService
 from app.services.lesson_service import LessonService
+from app.services.gamification_service import GamificationService
+from app.services.progress_service import ProgressService
 
 def get_current_user() -> int:
     # Fake authentication dependency returning DEFAULT_USER_ID
@@ -35,15 +37,28 @@ def get_progress_repo(db: Session = Depends(get_db)) -> ProgressRepository:
 def get_attempt_repo(db: Session = Depends(get_db)) -> AttemptRepository:
     return AttemptRepository(db)
 
+def get_gamification_service() -> GamificationService:
+    return GamificationService()
+
+def get_progress_service(
+    progress_repo: ProgressRepository = Depends(get_progress_repo),
+    lesson_repo: LessonRepository = Depends(get_lesson_repo)
+) -> ProgressService:
+    return ProgressService(progress_repo=progress_repo, lesson_repo=lesson_repo)
+
 def get_lesson_service(
     lesson_repo: LessonRepository = Depends(get_lesson_repo),
     progress_repo: ProgressRepository = Depends(get_progress_repo),
     attempt_repo: AttemptRepository = Depends(get_attempt_repo),
-    stats_repo: UserStatsRepository = Depends(get_stats_repo)
+    stats_repo: UserStatsRepository = Depends(get_stats_repo),
+    gamification_service: GamificationService = Depends(get_gamification_service),
+    progress_service: ProgressService = Depends(get_progress_service)
 ) -> LessonService:
     return LessonService(
         lesson_repo=lesson_repo, 
         progress_repo=progress_repo,
         attempt_repo=attempt_repo,
-        user_stats_repo=stats_repo
+        user_stats_repo=stats_repo,
+        gamification_service=gamification_service,
+        progress_service=progress_service
     )
