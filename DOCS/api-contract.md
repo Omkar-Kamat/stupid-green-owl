@@ -1,36 +1,58 @@
 # API Contract
 
 All endpoints are versioned under `/api/v1/` and return structured Pydantic DTOs, not DB entities.
-Authentication (for the 24-hour scope) is a dependency `get_current_user` injecting a default user.
+Authentication (for the 24-hour scope) is a dependency `get_current_user` injecting `DEFAULT_USER_ID=1` (demo user).
 
 ## Shared Error Structure
-Errors return standard HTTP status codes with a JSON body mapping to a specific code:
+
+Domain errors return:
+
 ```json
-{
-  "detail": "SKILL_LOCKED"
-}
+{ "detail": "SKILL_LOCKED" }
 ```
+
+FastAPI validation errors (422) return the standard `detail: [{ loc, msg, ... }]` array.
+
+Custom domain error codes (`403`, `409`, `422`) are mapped in `app/main.py` but are **not** declared on individual route OpenAPI responses — consult `docs/error-taxonomy.md` for the full list.
+
+---
+
+## Answer payload shapes (`POST .../answers`)
+
+`AnswerRequest.answer` is polymorphic. The evaluator for each exercise type expects:
+
+| Exercise type | `answer` JSON shape | Example |
+|---|---|---|
+| `multiple_choice` | `string` | `"あ"` |
+| `translate` | `string[]` | `["ありがとう"]` |
+| `fill_blank` | `string[]` | `["り"]` |
+| `match_pairs` | `object` (pair id → right option id) | `{"p1": "r1", "p2": "r2"}` |
+| `type_answer` | `string` | `"a"` |
+
+Malformed shapes return `422 INVALID_ANSWER_PAYLOAD`.
 
 ---
 
 ### `GET /api/v1/path`
+
 - **Purpose**: Retrieves the full course tree and user's progress.
 - **Authentication**: Required (`get_current_user`).
 - **Success (200)**: `PathResponse`
+
 ```json
 {
   "units": [
     {
       "id": 1,
-      "title": "Basics",
-      "color_theme": "green",
+      "title": "Basics & Greetings",
+      "color_theme": "purple",
       "skills": [
         {
-          "id": 10,
-          "title": "Greetings",
-          "icon": "hand-wave",
-          "status": "completed",
-          "crown_level": 1
+          "id": 1,
+          "title": "Hiragana",
+          "icon": "character",
+          "status": "available",
+          "crown_level": 0
         }
       ]
     }
@@ -41,108 +63,89 @@ Errors return standard HTTP status codes with a JSON body mapping to a specific 
 ---
 
 ### `POST /api/v1/lessons/{lesson_id}/start`
+
 - **Purpose**: Starts or resumes a lesson attempt.
 - **Authentication**: Required.
 - **Path Parameters**: `lesson_id` (int).
-- **Validation Rules**: 
-  - Fails if skill is locked server-side.
-  - Fails if lesson has no exercises.
-  - Fails if lesson doesn't exist.
-- **Data Safety Boundary**: The API response MUST NEVER map or expose the `Exercise.correct_answer` field in the initial payload.
+- **Data Safety Boundary**: The response MUST NOT expose `Exercise.correct_answer`.
 - **Success (200)**: `StartLessonResponse`
+
 ```json
 {
-  "attempt_id": 100,
-  "current_exercise_index": 3,
-  "hearts_remaining": 5,
+  "attempt_id": 1,
+  "current_exercise_index": 0,
+  "hearts_remaining": 4,
   "exercises": [
     {
-      "id": 101,
+      "id": 1,
       "type": "multiple_choice",
-      "prompt": "Translate: Hello",
-      "data": { "options": ["Hola", "Adiós", "Gracias", "Casa"] }
+      "prompt": "Select the character for 'あ'",
+      "data": { "options": ["あ", "い", "う", "え"] }
     }
   ]
 }
 ```
-- **Errors**:
-  - `403 Forbidden` - `SKILL_LOCKED`
-  - `404 Not Found` - `LESSON_NOT_FOUND`
-  - `409 Conflict` - `LESSON_HAS_NO_EXERCISES`
-  - `409 Conflict` - `CORRUPTED_LESSON_STATE`
+
+- **Errors**: `403 SKILL_LOCKED`, `404 LESSON_NOT_FOUND`, `409 LESSON_HAS_NO_EXERCISES`, `409 CORRUPTED_LESSON_STATE`
 
 ---
 
 ### `POST /api/v1/lesson-attempts/{attempt_id}/answers`
-- **Purpose**: Submits an answer for an exercise.
-- **Authentication**: Required.
-- **Path Parameters**: `attempt_id` (int).
-- **Request Body**: `AnswerRequest`
-```json
-{
-  "exercise_id": 101,
-  "answer": "Hola" 
-}
-```
-- **Validation**: Fails if answer shape is malformed (`422 INVALID_ANSWER_PAYLOAD`).
-- **Data Safety Boundary**: The `correct_answer` may safely be returned as post-submission feedback once the user has already committed their answer.
+
+- **Purpose**: Submits an answer for the current exercise.
+- **Request Body**: `AnswerRequest` (see table above).
 - **Success (200)**: `AnswerResponse`
+
 ```json
 {
   "correct": true,
-  "correct_answer": "Hola",
-  "hearts_remaining": 5,
+  "correct_answer": "あ",
+  "hearts_remaining": 4,
   "next_exercise_index": 1,
   "lesson_failed": false
 }
 ```
-*(Note: A wrong answer emptying hearts returns a 200 with `lesson_failed: true`, not an HTTP error).*
-- **Errors**:
-  - `404 Not Found` - `ATTEMPT_NOT_FOUND`
-  - `409 Conflict` - `ATTEMPT_ALREADY_TERMINATED`
+
+Wrong answers that empty hearts return **HTTP 200** with `"lesson_failed": true` (not an error status).
+
+- **Errors**: `404 ATTEMPT_NOT_FOUND`, `409 ATTEMPT_ALREADY_TERMINATED`, `409 EXERCISE_NOT_CURRENT`, …
 
 ---
 
 ### `POST /api/v1/lesson-attempts/{attempt_id}/complete`
+
 - **Purpose**: Completes the lesson, updating XP, streak, and skill progress.
-- **Authentication**: Required.
-- **Path Parameters**: `attempt_id` (int).
-- **Idempotency**: Returns cached result if `xp_awarded` is already set.
+- **Idempotency**: If `xp_awarded` is already set on the attempt, returns cached `xp_awarded` / `crown_earned` without double-awarding XP. **`total_xp` and `streak` are read from current `UserStats` on every response** (including retries).
 - **Success (200)**: `CompleteResponse`
+
 ```json
 {
-  "xp_awarded": 15,
-  "total_xp": 355,
+  "xp_awarded": 10,
+  "total_xp": 350,
   "streak": 7,
-  "crown_earned": false
+  "crown_earned": true
 }
 ```
-- **Errors**:
-  - `409 Conflict` - `LESSON_INCOMPLETE` (not all exercises answered)
-  - `409 Conflict` - `ATTEMPT_ALREADY_TERMINATED` (if previously failed)
-  - `404 Not Found` - `ATTEMPT_NOT_FOUND`
 
 ---
 
 ### `GET /api/v1/me`
-- **Purpose**: Retrieve profile data.
-- **Authentication**: Required.
-- **Success (200)**: `UserResponse`
+
 ```json
 {
   "id": 1,
   "username": "demo_learner",
   "avatar_url": null,
-  "created_at": "2024-01-01T00:00:00Z"
+  "created_at": "2026-08-13T12:00:00"
 }
 ```
 
 ---
 
 ### `GET /api/v1/me/stats`
-- **Purpose**: Retrieve gamification stats (XP, streak, hearts).
-- **Authentication**: Required.
-- **Success (200)**: `UserStatsResponse`
+
+Lazy heart regeneration may commit before returning.
+
 ```json
 {
   "total_xp": 340,
@@ -157,31 +160,47 @@ Errors return standard HTTP status codes with a JSON body mapping to a specific 
 ---
 
 ### `POST /api/v1/me/hearts/refill`
-- **Purpose**: Buy hearts using gems.
-- **Authentication**: Required.
-- **Success (200)**: `UserStatsResponse` (updated).
+
+Costs **350 gems**. Refills hearts to `max_hearts`.
+
+- **Errors**: `409 HEARTS_ALREADY_FULL`, `409 NOT_ENOUGH_GEMS`
 
 ---
 
 ### `GET /api/v1/leaderboard`
-- **Purpose**: Retrieve top users by XP.
-- **Success (200)**: `LeaderboardResponse`
+
+Sorted by `total_xp DESC`, tie-break `user_id ASC`.
+
 ```json
 {
   "entries": [
-    { "user_id": 1, "username": "demo_learner", "total_xp": 340, "rank": 1 }
-  ]
+    {
+      "rank": 1,
+      "user_id": 4,
+      "username": "polyglot99",
+      "avatar_url": null,
+      "total_xp": 1200,
+      "current_streak": 45
+    },
+    {
+      "rank": 3,
+      "user_id": 1,
+      "username": "demo_learner",
+      "avatar_url": null,
+      "total_xp": 340,
+      "current_streak": 7
+    }
+  ],
+  "current_user_rank": 3
 }
 ```
+
+*(Illustrative — ranks reflect seeded demo data where `polyglot99` leads.)*
 
 ---
 
 ### `GET /health-check`
-- **Purpose**: System health check for load balancers and up-time monitoring.
-- **Authentication**: None.
-- **Success (200)**:
+
 ```json
-{
-  "status": "ok"
-}
+{ "status": "ok" }
 ```

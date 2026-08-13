@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend
 
-## Getting Started
+Next.js App Router UI for the Duolingo-style learning platform.
 
-First, run the development server:
+## Setup
 
 ```bash
+npm install
+cp .env.local.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:8000
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000/learn/japanese](http://localhost:3000/learn/japanese).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Backend integration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The production learner journey uses **`ApiLessonPlayer`** at `/lesson/[lessonId]`, wired to the FastAPI backend via `src/lib/api/`.
 
-## Learn More
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Backend origin (default `http://localhost:8000`) |
 
-To learn more about Next.js, take a look at the following resources:
+**Deploy:** set `NEXT_PUBLIC_API_URL` to your deployed backend URL. Without it, the client falls back to localhost.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Demo vs prototype routes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Route | Data source |
+|---|---|
+| `/learn/japanese`, `/lesson/[id]`, profile, shop, leaderboard | Live backend API |
+| `/lesson/listening/*`, `/lesson/translate/*`, `/lesson/meaning/*` | Local UI prototypes (`LessonPlayer` + mock exercises) |
 
-## Deploy on Vercel
+Auth is mocked server-side (`DEFAULT_USER_ID=1`); the login page writes a local demo session only.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Verification
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+# With backend running:
+npm run dev
+```

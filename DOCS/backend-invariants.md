@@ -85,7 +85,7 @@ This document outlines the core cross-feature invariants that must hold true at 
 
 ### 16. Hearts never regenerate above max_hearts
 - **DB constraint**: `CHECK (hearts <= max_hearts)` on `user_stats`
-- **Service check**: Regeneration cron/task checks `if current_hearts >= max_hearts: skip` and caps addition at `max_hearts`
+- **Service check**: Lazy heart regeneration on `GET /me/stats` checks `if current_hearts >= max_hearts: skip` and caps addition at `max_hearts` (no background cron/worker)
 - **Test**: `test_heart_regeneration_capped_at_max`
 
 ### 17. Refill never produces hearts > max_hearts

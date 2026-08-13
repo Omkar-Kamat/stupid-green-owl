@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * UI prototype lesson player — local demo exercises only.
+ * The production learner journey uses ApiLessonPlayer (/lesson/[lessonId]).
+ */
 import Link from "next/link";
 import { useReducer, useCallback, useRef, type Dispatch } from "react";
 import type {

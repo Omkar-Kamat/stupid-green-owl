@@ -46,7 +46,7 @@ BACKEND/
 │   ├── schemas/          # Pydantic validation schemas (DTOs)
 │   └── services/         # Business logic & evaluators
 ├── tests/                # Pytest suites (unit, integration, invariants)
-├── seed.py               # Idempotent DB hydration script
+├── seed.py               # Demo reset/reseed script (wipes and recreates demo data)
 └── requirements.txt      # Python dependencies
 ```
 
@@ -97,11 +97,27 @@ alembic revision --autogenerate -m "Add new table"
 ```
 
 ## Seed Data
-The database must be seeded to test the core features. The seed script is idempotent and safe to run multiple times:
+
+The database must be seeded for local demo and release verification. **`seed.py` is a deterministic reset/reseed** — it wipes all course and learner rows, then recreates the Japanese demo dataset. Safe to run before demos; do not describe it as a partial upsert.
+
 ```bash
 python seed.py
 ```
-This sets up a Spanish course, multiple units/skills, exercises, and 5 leaderboard users.
+
+This creates:
+- **Course**: Japanese for English Speakers (2 units, 4 skills, 4 lessons, 40+ exercises)
+- **Exercise types**: all five (`multiple_choice`, `translate`, `match_pairs`, `fill_blank`, `type_answer`)
+- **Users**: `demo_learner` (id=1) plus 4 leaderboard filler users
+
+End-to-end verification:
+
+```bash
+# With backend running on :8000
+bash scripts/smoke_test.sh
+
+# Full fresh-install check (venv, migrate, seed, pytest, downgrade/upgrade, smoke)
+bash scripts/verify_fresh_install.sh
+```
 
 ## Running Tests
 Tests cover unit boundaries, API integration, adversarial QA attacks, and transaction rollbacks.
@@ -125,11 +141,16 @@ Authentication is mocked for this assignment context. A global dependency `get_c
 Deployment must not rely on the local SQLite file being pre-populated. Startup sequences for fresh environments must follow:
 1. **Deploy**: Build artifact and set environment configuration.
 2. **Migrate**: Run `alembic upgrade head` against a fresh volume/database.
-3. **Seed**: Run `python seed.py` if appropriate (idempotency guarantees it is safe).
+3. **Seed**: Run `python seed.py` (deterministic reset/reseed).
 4. **Start**: Deploy via Docker/Gunicorn wrapping Uvicorn workers.
 
-**⚠️ SQLite Scope Tradeoff**: For this assignment, using SQLite is a deliberate scope tradeoff. For production, deployment should provide a `DATABASE_URL` pointing to PostgreSQL rather than relying on ephemeral container disk persistence.
+**PostgreSQL**: The ORM layer is Postgres-compatible. For production, set `DATABASE_URL` to a PostgreSQL connection string and install a driver (`psycopg[binary]` recommended — not bundled in `requirements.txt` because the assignment default is SQLite).
+
+**Frontend**: Set `NEXT_PUBLIC_API_URL` to the deployed backend origin (e.g. `https://api.example.com`). Without it, the Next.js client falls back to `http://localhost:8000`.
 
 ## Known Limitations
 - The `type_answer` evaluator currently uses strict string equality. NLP/Levenshtein distance matching would be required for a production typo-forgiving experience.
 - Leaderboard uses a direct `ORDER BY total_xp DESC` query which scales poorly. A real system would use a Redis Sorted Set (ZSET).
+- **`POST /complete` concurrent retries** are not reconciled beyond SQLite single-writer semantics; duplicate in-flight completions are a known scope limitation.
+- **Concurrent wrong-answer submissions** can consume multiple hearts (only duplicate *correct* answers are blocked by a partial unique index).
+- **`start_lesson` loads the full path** to resolve skill lock state — acceptable for demo scope; noted as P2 query optimization debt.

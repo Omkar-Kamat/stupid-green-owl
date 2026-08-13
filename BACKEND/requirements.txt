@@ -7,3 +7,6 @@ pydantic-settings
 pytest
 httpx
 pytest-asyncio
+
+# Optional — install when using PostgreSQL in production:
+# psycopg[binary]
