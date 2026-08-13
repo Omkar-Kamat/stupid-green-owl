@@ -82,7 +82,7 @@ All database entities are marked as **BUILD** for the 24-hour scope unless expli
 - `current_exercise_index`: INT, NOT NULL, DEFAULT 0. A zero-based index pointing to the *next* exercise. Incremented only upon a correct answer. When the final exercise is answered correctly, it increments to `len(exercises)`.
 - `hearts_lost`: INT, NOT NULL, DEFAULT 0. (Attempt-local state tracking mistakes during this specific session. The global authoritative balance is `UserStats.hearts`).
 - `xp_awarded`: INT, NULLABLE
-- `crown_earned`: BOOLEAN, NULLABLE, DEFAULT FALSE
+- `crown_earned`: BOOLEAN, NOT NULL, DEFAULT FALSE
 - `started_at`: DATETIME, NOT NULL, DEFAULT `utcnow()`
 - `completed_at`: DATETIME, NULLABLE
 

@@ -58,12 +58,12 @@ This document outlines the core cross-feature invariants that must hold true at 
 
 ### 11. FAILED attempts never become IN_PROGRESS
 - **DB constraint**: State machine transition restrictions
-- **Service check**: State transitions only permit `in_progress -> failed`. No endpoints allow reversing to `in_progress`.
+- **Service check**: A `failed` attempt is terminal. `start_lesson` may create a **new** attempt row; it never mutates the failed row back to `in_progress`.
 - **Test**: `test_failed_attempt_cannot_resume`
 
 ### 12. COMPLETED attempts never become IN_PROGRESS
 - **DB constraint**: State machine transition restrictions
-- **Service check**: State transitions only permit `in_progress -> completed`. No endpoints allow reversing to `in_progress`.
+- **Service check**: A `completed` attempt is terminal. `start_lesson` may create a **new** attempt row for practice; it never mutates the completed row back to `in_progress`.
 - **Test**: `test_completed_attempt_cannot_resume`
 
 ### 13. Completion awards XP exactly once
@@ -85,7 +85,7 @@ This document outlines the core cross-feature invariants that must hold true at 
 
 ### 16. Hearts never regenerate above max_hearts
 - **DB constraint**: `CHECK (hearts <= max_hearts)` on `user_stats`
-- **Service check**: Regeneration cron/task checks `if current_hearts >= max_hearts: skip` and caps addition at `max_hearts`
+- **Service check**: Lazy regeneration on read (`GET /me/stats`, and before heart consumption) calculates elapsed intervals since `last_heart_lost_at`, adds hearts up to `max_hearts`, and persists only when state changes. No background cron, worker, or scheduled task is used.
 - **Test**: `test_heart_regeneration_capped_at_max`
 
 ### 17. Refill never produces hearts > max_hearts

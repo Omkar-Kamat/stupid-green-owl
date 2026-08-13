@@ -21,7 +21,7 @@ A comprehensive backend service for a language learning platform, implementing c
 ## Key Engineering Decisions
 - **Route → Service → Repository**: Strict boundary separation. Routes handle HTTP only, repositories handle SQL only, and services own the business logic.
 - **Service-Owned Transactions**: Multi-table state mutations (like lesson completions updating Attempts, UserStats, and SkillProgress) are executed atomically within a single `db.commit()` inside the service layer.
-- **LessonAttempt State Machine**: Strict unidirectional transitions (`in_progress` → `completed` or `failed`).
+- **LessonAttempt State Machine**: Each attempt has terminal states (`completed` or `failed`); a `LessonAttempt` never transitions backward. Retrying or practicing after completion/failure creates a **new** `in_progress` attempt row.
 - **Evaluator Strategy Registry**: The `ExerciseEvaluator` class uses a dictionary registry to route answers to specific evaluation functions based on `ExerciseType`.
 - **DB-Enforced Active Attempt Invariant**: A Partial Unique Index (`CREATE UNIQUE INDEX ... WHERE status = 'in_progress'`) guarantees exactly one active attempt per user/lesson at the database level.
 - **Idempotent Completion**: The `complete_lesson` endpoint caches the XP awarded on the `LessonAttempt`. Repeated completion calls return the cached state rather than duplicating XP.

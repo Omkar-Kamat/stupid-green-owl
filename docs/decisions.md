@@ -96,11 +96,11 @@
   - `SkillProgress.xp_earned += xp_awarded`.
   - `SkillProgress.lessons_completed_in_level += 1`.
   - If `lessons_completed_in_level >= Skill.lessons_per_level`, reset it to `0` and increment `crown_level += 1`.
-  - **Unlock Cascade**: When a skill reaches `crown_level == 1` for the first time, its `status` becomes `completed`. The `ProgressService` must then query the next skill in the path (ordered by `unit.order_index`, then `skill.order_index`) and upsert its `SkillProgress` to `status = 'available'`.
+  - **Unlock Cascade**: When a skill reaches `crown_level == 1` for the first time, its `status` becomes `completed`. The `ProgressService` must then query the next skill in the path (ordered by `unit.order_index`, then `skill.order_index`) and create its `SkillProgress` row with `status = 'available'` via `ProgressRepository.create_skill_progress()`.
 
 ### 8. Idempotency using xp_awarded & 9. Duplicate/Concurrent Completion
-- **Decision**: `POST /complete` must be idempotent. Completion is transactionally atomic under SQLite's single-writer model; concurrent duplicate requests are not explicitly retried/reconciled at the application layer. If a request observes an already-completed attempt with `xp_awarded` set, it returns the persisted completion result without side effects.
-- **Reasoning**: Prevents double-XP exploits and handles native client retries gracefully on poor networks.
+- **Decision**: `POST /complete` must be idempotent for **side effects** (XP awarded once, stored on `LessonAttempt.xp_awarded`). If the attempt is already completed, the handler returns the persisted `xp_awarded` and `crown_earned` without mutating stats again. **`total_xp` and `streak` in the response reflect the user's current `UserStats` at retry time**, not a frozen completion snapshot — document this for clients.
+- **Concurrent completion**: Completion is transactionally atomic under SQLite's single-writer model; concurrent duplicate requests are not explicitly retried/reconciled at the application layer.
 
 ### 10. Transaction Boundary
 - **Decision**: `LessonService.complete_lesson()` opens a single transaction. It delegates mutations to `GamificationService` (updates `UserStats`) and `ProgressService` (updates `SkillProgress` and cascades unlocks), then mutates `LessonAttempt`. `LessonAttempt.status = COMPLETED` and `xp_awarded` are persisted atomically in the same transaction. A single `db.commit()` is issued. If any service fails, a `db.rollback()` prevents partial state.
@@ -114,7 +114,7 @@
 
 ### 13. Required Repository Methods
 - **LessonRepository**: `get_skill(id)`, `get_next_skill(current_skill_id)`.
-- **ProgressRepository**: `get_skill_progress(user_id, skill_id)`, `upsert_skill_progress(progress)`.
+- **ProgressRepository**: `get_skill_progress(user_id, skill_id)`, `create_skill_progress(progress)`.
 - **UserStatsRepository**: `get_stats_by_user_id(user_id)`.
 - **AttemptRepository**: `get_attempt_by_id(id)`.
 
