@@ -213,3 +213,7 @@ class ExerciseAttempt(Base):
 
     attempt = relationship("LessonAttempt", back_populates="exercise_attempts")
     exercise = relationship("Exercise")
+
+    __table_args__ = (
+        Index("idx_unique_correct_attempt", "lesson_attempt_id", "exercise_id", unique=True, sqlite_where=Column("is_correct") == True, postgresql_where=Column("is_correct") == True),
+    )

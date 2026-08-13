@@ -3,10 +3,12 @@ from app.repositories.progress_repository import ProgressRepository
 from app.repositories.attempt_repository import AttemptRepository
 from app.repositories.user_repository import UserStatsRepository
 from app.schemas.path import PathResponse, UnitResponse, SkillPathResponse
-from app.schemas.lesson import StartLessonResponse, ExerciseResponse
+from app.schemas.lesson import StartLessonResponse, ExerciseResponse, AnswerRequest, AnswerResponse
+from app.services.evaluators import EVALUATORS
+from datetime import datetime, timezone
+from app.models.domain import LessonAttempt, AttemptStatus, ExerciseAttempt
 from app.core.config import settings
 from app.core.exceptions import NotFoundError, ForbiddenError, ConflictError
-from app.models.domain import LessonAttempt, AttemptStatus
 from sqlalchemy.exc import IntegrityError
 
 class LessonService:
@@ -128,4 +130,72 @@ class LessonService:
                     data=e.data
                 ) for e in exercises
             ]
+        )
+
+    def submit_answer(self, user_id: int, attempt_id: int, req: AnswerRequest) -> AnswerResponse:
+        attempt = self.attempt_repo.get_attempt_by_id(attempt_id)
+        if not attempt:
+            raise NotFoundError("ATTEMPT", attempt_id)
+            
+        if attempt.user_id != user_id:
+            raise ForbiddenError("ATTEMPT_FORBIDDEN")
+            
+        if attempt.status != AttemptStatus.in_progress:
+            raise ConflictError("ATTEMPT_ALREADY_TERMINATED")
+            
+        lesson = self.lesson_repo.get_lesson_with_exercises(attempt.lesson_id)
+        if not lesson:
+            raise ConflictError("CORRUPTED_LESSON_STATE")
+            
+        exercise = next((e for e in lesson.exercises if e.id == req.exercise_id), None)
+        if not exercise:
+            raise ConflictError("EXERCISE_NOT_IN_LESSON")
+            
+        if exercise.order_index != attempt.current_exercise_index:
+            raise ConflictError("EXERCISE_NOT_CURRENT")
+            
+        evaluator = EVALUATORS.get(exercise.type)
+        if not evaluator:
+            raise ConflictError("UNSUPPORTED_EXERCISE_TYPE")
+            
+        stats = self.user_stats_repo.get_stats_by_user_id(user_id)
+        if not stats:
+            raise ConflictError("CORRUPTED_USER_STATS")
+            
+        is_correct = evaluator.evaluate(exercise, req.answer)
+        
+        ex_attempt = ExerciseAttempt(
+            lesson_attempt_id=attempt.id,
+            exercise_id=exercise.id,
+            user_answer=req.answer,
+            is_correct=is_correct
+        )
+        
+        lesson_failed = False
+        
+        try:
+            self.attempt_repo.create_exercise_attempt(ex_attempt)
+            
+            if is_correct:
+                attempt.current_exercise_index += 1
+            else:
+                attempt.hearts_lost += 1
+                stats.hearts = max(0, stats.hearts - 1)
+                
+                if stats.hearts == 0:
+                    attempt.status = AttemptStatus.failed
+                    attempt.completed_at = datetime.now(timezone.utc)
+                    lesson_failed = True
+                    
+            self.attempt_repo.db.commit()
+        except Exception:
+            self.attempt_repo.db.rollback()
+            raise
+        
+        return AnswerResponse(
+            correct=is_correct,
+            correct_answer=exercise.correct_answer,
+            hearts_remaining=stats.hearts,
+            next_exercise_index=attempt.current_exercise_index,
+            lesson_failed=lesson_failed
         )

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.domain import LessonAttempt, AttemptStatus
+from app.models.domain import LessonAttempt, AttemptStatus, ExerciseAttempt
 
 class AttemptRepository:
     def __init__(self, db: Session):
@@ -16,3 +16,11 @@ class AttemptRepository:
         self.db.add(attempt)
         self.db.flush()
         return attempt
+
+    def get_attempt_by_id(self, attempt_id: int) -> LessonAttempt | None:
+        return self.db.query(LessonAttempt).filter(LessonAttempt.id == attempt_id).first()
+
+    def create_exercise_attempt(self, exercise_attempt: "ExerciseAttempt") -> "ExerciseAttempt":
+        self.db.add(exercise_attempt)
+        self.db.flush()
+        return exercise_attempt

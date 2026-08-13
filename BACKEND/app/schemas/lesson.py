@@ -14,3 +14,14 @@ class StartLessonResponse(BaseModel):
     current_exercise_index: int
     hearts_remaining: int
     exercises: list[ExerciseResponse]
+
+class AnswerRequest(BaseModel):
+    exercise_id: int
+    answer: Any
+
+class AnswerResponse(BaseModel):
+    correct: bool
+    correct_answer: Any
+    hearts_remaining: int
+    next_exercise_index: int
+    lesson_failed: bool
