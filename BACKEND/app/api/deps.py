@@ -11,6 +11,8 @@ from app.services.user_service import UserService
 from app.services.lesson_service import LessonService
 from app.services.gamification_service import GamificationService
 from app.services.progress_service import ProgressService
+from app.repositories.leaderboard_repository import LeaderboardRepository
+from app.services.leaderboard_service import LeaderboardService
 
 def get_current_user() -> int:
     # Fake authentication dependency returning DEFAULT_USER_ID
@@ -62,3 +64,12 @@ def get_lesson_service(
         gamification_service=gamification_service,
         progress_service=progress_service
     )
+
+def get_leaderboard_repo(db: Session = Depends(get_db)) -> LeaderboardRepository:
+    return LeaderboardRepository(db)
+
+def get_leaderboard_service(
+    leaderboard_repo: LeaderboardRepository = Depends(get_leaderboard_repo),
+    stats_repo: UserStatsRepository = Depends(get_stats_repo)
+) -> LeaderboardService:
+    return LeaderboardService(leaderboard_repo=leaderboard_repo, stats_repo=stats_repo)
