@@ -1,6 +1,7 @@
 from app.repositories.lesson_repository import LessonRepository
 from app.repositories.progress_repository import ProgressRepository
 from app.schemas.path import PathResponse, UnitResponse, SkillPathResponse
+from app.core.config import settings
 
 class LessonService:
     def __init__(self, lesson_repo: LessonRepository, progress_repo: ProgressRepository):
@@ -8,7 +9,7 @@ class LessonService:
         self.progress_repo = progress_repo
 
     def get_path(self, user_id: int) -> PathResponse:
-        units = self.lesson_repo.get_course_tree(course_id=1)
+        units = self.lesson_repo.get_course_tree(course_id=settings.DEFAULT_COURSE_ID)
         user_progress = self.progress_repo.get_user_progress(user_id)
         
         unit_responses = []

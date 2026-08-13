@@ -15,5 +15,7 @@ class UserStatsResponse(BaseModel):
     current_streak: int
     hearts: int
     max_hearts: int
+    gems: int
+    daily_goal: int
 
     model_config = ConfigDict(from_attributes=True)

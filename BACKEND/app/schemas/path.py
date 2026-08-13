@@ -1,10 +1,16 @@
 from pydantic import BaseModel, ConfigDict
+import enum
+
+class SkillStatus(str, enum.Enum):
+    LOCKED = "locked"
+    AVAILABLE = "available"
+    COMPLETED = "completed"
 
 class SkillPathResponse(BaseModel):
     id: int
     title: str
     icon: str
-    status: str
+    status: SkillStatus
     crown_level: int
     
     model_config = ConfigDict(from_attributes=True)

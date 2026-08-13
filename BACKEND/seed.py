@@ -47,13 +47,59 @@ def seed_db():
         db.add(lesson2)
         db.flush()
 
+        # Lesson 1 exercises
         ex1 = Exercise(
             lesson_id=lesson1.id, order_index=0, type=ExerciseType.multiple_choice,
             prompt="Translate: Hello",
             data={"options": ["Hola", "Adiós", "Gracias", "Casa"]},
             correct_answer="Hola"
         )
-        db.add(ex1)
+        ex2 = Exercise(
+            lesson_id=lesson1.id, order_index=1, type=ExerciseType.translate,
+            prompt="Translate this sentence",
+            data={"source_text": "Hello", "word_bank": ["Hola", "Adiós"]},
+            correct_answer="Hola"
+        )
+        ex3 = Exercise(
+            lesson_id=lesson1.id, order_index=2, type=ExerciseType.type_answer,
+            prompt="Type the translation",
+            data={"placeholder": "Type your answer"},
+            correct_answer="Hola"
+        )
+        db.add_all([ex1, ex2, ex3])
+        
+        # Lesson 2 exercises
+        l2_ex1 = Exercise(
+            lesson_id=lesson2.id, order_index=0, type=ExerciseType.multiple_choice,
+            prompt="Translate: Apple",
+            data={"options": ["Manzana", "Naranja", "Plátano"]},
+            correct_answer="Manzana"
+        )
+        l2_ex2 = Exercise(
+            lesson_id=lesson2.id, order_index=1, type=ExerciseType.translate,
+            prompt="Translate this sentence",
+            data={"source_text": "I eat an apple", "word_bank": ["Yo", "como", "una", "manzana"]},
+            correct_answer="Yo como una manzana"
+        )
+        l2_ex3 = Exercise(
+            lesson_id=lesson2.id, order_index=2, type=ExerciseType.type_answer,
+            prompt="Type the translation",
+            data={"placeholder": "Type your answer"},
+            correct_answer="Manzana"
+        )
+        l2_ex4 = Exercise(
+            lesson_id=lesson2.id, order_index=3, type=ExerciseType.fill_blank,
+            prompt="Fill in the blank",
+            data={"sentence": "Yo ___ estudiante", "options": ["soy", "es", "eres"]},
+            correct_answer="soy"
+        )
+        l2_ex5 = Exercise(
+            lesson_id=lesson2.id, order_index=4, type=ExerciseType.match_pairs,
+            prompt="Match the pairs",
+            data={"pairs": [{"left": "Hello", "right": "Hola"}, {"left": "Thanks", "right": "Gracias"}]},
+            correct_answer={"pairs": [{"left": "Hello", "right": "Hola"}, {"left": "Thanks", "right": "Gracias"}]}
+        )
+        db.add_all([l2_ex1, l2_ex2, l2_ex3, l2_ex4, l2_ex5])
 
         print("Seeding users...")
         demo_user = User(id=1, username="demo_learner")

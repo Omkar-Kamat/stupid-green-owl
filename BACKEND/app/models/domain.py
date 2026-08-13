@@ -163,6 +163,9 @@ class SkillProgress(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "skill_id", name="uq_user_id_skill_id"),
+        CheckConstraint("crown_level >= 0", name="chk_crown_level_positive"),
+        CheckConstraint("lessons_completed_in_level >= 0", name="chk_lessons_completed_positive"),
+        CheckConstraint("xp_earned >= 0", name="chk_xp_earned_positive"),
     )
 
 
@@ -192,6 +195,9 @@ class LessonAttempt(Base):
     __table_args__ = (
         Index("idx_lesson_attempts_resume", "user_id", "lesson_id", "status"),
         Index("idx_one_active_attempt_per_lesson", "user_id", "lesson_id", unique=True, sqlite_where=Column("status") == "in_progress", postgresql_where=Column("status") == "in_progress"),
+        CheckConstraint("current_exercise_index >= 0", name="chk_current_exercise_index_positive"),
+        CheckConstraint("hearts_lost >= 0", name="chk_hearts_lost_positive"),
+        CheckConstraint("xp_awarded >= 0 OR xp_awarded IS NULL", name="chk_xp_awarded_positive"),
     )
 
 

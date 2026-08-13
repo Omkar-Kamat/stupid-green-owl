@@ -13,5 +13,6 @@ class Settings(BaseSettings):
     
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEFAULT_USER_ID: int = int(os.getenv("DEFAULT_USER_ID", "1"))
+    DEFAULT_COURSE_ID: int = int(os.getenv("DEFAULT_COURSE_ID", "1"))
 
 settings = Settings()
