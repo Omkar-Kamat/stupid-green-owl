@@ -1,5 +1,5 @@
 import pytest
-from app.models.domain import Course, Unit, Skill, SkillProgress, ProgressStatus
+from app.models.domain import Course, Unit, Skill, SkillProgress, ProgressStatus, Lesson
 from app.repositories.lesson_repository import LessonRepository
 from app.repositories.progress_repository import ProgressRepository
 from app.repositories.attempt_repository import AttemptRepository
@@ -19,6 +19,12 @@ def setup_course(db):
     skill2 = Skill(unit_id=unit.id, title="Skill 2", icon="s2", order_index=1)
     skill3 = Skill(unit_id=unit.id, title="Skill 3", icon="s3", order_index=2)
     db.add_all([skill1, skill2, skill3])
+    db.flush()
+    db.add_all([
+        Lesson(skill_id=skill1.id, order_index=0),
+        Lesson(skill_id=skill2.id, order_index=0),
+        Lesson(skill_id=skill3.id, order_index=0),
+    ])
     db.commit()
     return skill1, skill2, skill3
 

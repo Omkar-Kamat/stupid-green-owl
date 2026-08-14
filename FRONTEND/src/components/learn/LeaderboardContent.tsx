@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { leaderboardApi } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-errors";
 import type { LeaderboardEntry as ApiLeaderboardEntry } from "@/lib/api/types";
@@ -14,20 +14,23 @@ export function LeaderboardContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await leaderboardApi.getLeaderboard();
-        setEntries(data.entries);
-        setCurrentUserRank(data.current_user_rank);
-      } catch (err) {
-        setError(getApiErrorMessage(err));
-      } finally {
-        setLoading(false);
-      }
+  const loadLeaderboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await leaderboardApi.getLeaderboard();
+      setEntries(data.entries);
+      setCurrentUserRank(data.current_user_rank);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
     }
-    void load();
   }, []);
+
+  useEffect(() => {
+    void loadLeaderboard();
+  }, [loadLeaderboard]);
 
   if (loading) {
     return (
@@ -39,8 +42,15 @@ export function LeaderboardContent() {
 
   if (error) {
     return (
-      <div className="mx-auto flex w-full max-w-[640px] flex-col items-center px-4 pb-16 pt-8 md:px-6">
+      <div className="mx-auto flex w-full max-w-[640px] flex-col items-center gap-4 px-4 pb-16 pt-8 md:px-6">
         <p className="text-[15px] font-bold text-[#ff4b4b]">{error}</p>
+        <button
+          type="button"
+          onClick={() => void loadLeaderboard()}
+          className="rounded-2xl border-2 border-b-4 border-[#1899d6] bg-[#1cb0f6] px-5 py-2.5 text-[13px] font-extrabold uppercase tracking-wide text-white"
+        >
+          Try again
+        </button>
       </div>
     );
   }

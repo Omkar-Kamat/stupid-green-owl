@@ -7,7 +7,7 @@ import { LearnRightPanelFooter } from "@/components/learn/LearnRightPanelFooter"
 import { useOptionalUserStats } from "@/components/providers/UserStatsProvider";
 
 export function LearnRightPanel() {
-  const { stats, loading } = useOptionalUserStats() ?? {};
+  const { stats, loading, error, refresh } = useOptionalUserStats() ?? {};
 
   return (
     <div className="mx-auto flex w-full max-w-[390px] flex-col gap-6 pb-10 pt-2">
@@ -15,9 +15,39 @@ export function LearnRightPanel() {
         <LearnStatsBar />
       </div>
 
-      <BronzeLeagueCard totalXp={stats?.total_xp} loading={loading} />
-      <DailyQuestsCard dailyGoal={stats?.daily_goal} loading={loading} />
+      {error ? (
+        <PanelError message={error} onRetry={refresh} />
+      ) : (
+        <>
+          <BronzeLeagueCard totalXp={stats?.total_xp} loading={loading} />
+          <DailyQuestsCard dailyGoal={stats?.daily_goal} loading={loading} />
+        </>
+      )}
+
       <LearnRightPanelFooter />
+    </div>
+  );
+}
+
+function PanelError({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => Promise<void>;
+}) {
+  return (
+    <div className="rounded-2xl border-2 border-duo-dark-border bg-duo-dark-input p-5">
+      <p className="text-[14px] font-bold text-[#ff4b4b]">{message}</p>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={() => void onRetry()}
+          className="mt-3 text-[12px] font-extrabold uppercase tracking-wide text-[#1cb0f6] hover:underline"
+        >
+          Retry
+        </button>
+      )}
     </div>
   );
 }
@@ -32,7 +62,7 @@ function BronzeLeagueCard({
   return (
     <PanelCard>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="text-[15px] font-extrabold text-white">Leaderboard</h3>
+        <h3 className="text-[15px] font-extrabold text-white">Your progress</h3>
         <Link
           href="/learn/japanese/leaderboards"
           className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#1cb0f6] hover:underline"
@@ -54,10 +84,10 @@ function BronzeLeagueCard({
         </div>
         <div className="min-w-0">
           <p className="text-[15px] font-bold leading-snug text-white">
-            {loading ? "Loading rank…" : `Total XP: ${totalXp ?? 0}`}
+            {loading ? "Loading rank…" : totalXp !== undefined ? `Total XP: ${totalXp}` : "—"}
           </p>
           <p className="mt-1 text-[13px] leading-snug text-[#afafaf]">
-            Check leaderboards for your current rank
+            Open leaderboards to see your league rank
           </p>
         </div>
       </div>
@@ -66,7 +96,7 @@ function BronzeLeagueCard({
 }
 
 function DailyQuestsCard({
-  dailyGoal = 30,
+  dailyGoal,
   loading,
 }: {
   dailyGoal?: number;
@@ -97,7 +127,7 @@ function DailyQuestsCard({
 
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-bold text-white">
-            {loading ? "Loading…" : `Daily goal: ${dailyGoal} XP`}
+            {loading ? "Loading…" : dailyGoal !== undefined ? `Daily goal: ${dailyGoal} XP` : "—"}
           </p>
           <p className="mt-1 text-[13px] text-[#afafaf]">
             Daily XP progress is tracked server-side

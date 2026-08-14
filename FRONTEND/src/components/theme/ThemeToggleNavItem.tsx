@@ -1,19 +1,22 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   getStoredTheme,
   toggleTheme,
   type AppTheme,
 } from "@/lib/theme";
 
-export function ThemeToggleNavItem() {
-  const [theme, setTheme] = useState<AppTheme>("dark");
+function readThemeFromDocument(): AppTheme {
+  if (typeof document === "undefined") return "dark";
+  const domTheme = document.documentElement.dataset.theme;
+  if (domTheme === "light" || domTheme === "dark") return domTheme;
+  return getStoredTheme();
+}
 
-  useEffect(() => {
-    setTheme(getStoredTheme());
-  }, []);
+export function ThemeToggleNavItem() {
+  const [theme, setTheme] = useState<AppTheme>(readThemeFromDocument);
 
   const label = theme === "dark" ? "Light mode" : "Dark mode";
   const showSun = theme === "dark";
@@ -30,7 +33,7 @@ export function ThemeToggleNavItem() {
       ) : (
         <Moon className="h-7 w-7 shrink-0 text-[#afafaf]" aria-hidden="true" />
       )}
-      {label}
+      <span suppressHydrationWarning>{label}</span>
     </button>
   );
 }

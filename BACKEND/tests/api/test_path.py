@@ -1,4 +1,4 @@
-from app.models.domain import Course, Unit, Skill, SkillProgress, ProgressStatus
+from app.models.domain import Course, Unit, Skill, SkillProgress, ProgressStatus, Lesson
 
 def test_read_learning_path(client, db):
     course = Course(name="Test", source_language="en", target_language="es")
@@ -10,6 +10,11 @@ def test_read_learning_path(client, db):
     skill1 = Skill(unit_id=unit.id, title="Skill 1", icon="hand", order_index=0)
     skill2 = Skill(unit_id=unit.id, title="Skill 2", icon="hand", order_index=1)
     db.add_all([skill1, skill2])
+    db.flush()
+    db.add_all([
+        Lesson(skill_id=skill1.id, order_index=0),
+        Lesson(skill_id=skill2.id, order_index=0),
+    ])
     db.flush()
     progress1 = SkillProgress(user_id=1, skill_id=skill1.id, status=ProgressStatus.completed)
     progress2 = SkillProgress(user_id=1, skill_id=skill2.id, status=ProgressStatus.available)
@@ -25,3 +30,5 @@ def test_read_learning_path(client, db):
     skills = data["units"][0]["skills"]
     assert skills[0]["status"] == "completed"
     assert skills[1]["status"] == "available"
+    assert "lesson_id" in skills[0]
+    assert "lesson_id" in skills[1]

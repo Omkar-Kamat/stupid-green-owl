@@ -3,9 +3,11 @@ import type { ReactNode } from "react";
 export function CorrectFeedbackBar({
   message,
   onContinue,
+  continueDisabled = false,
 }: {
   message: string;
   onContinue?: () => void;
+  continueDisabled?: boolean;
 }) {
   return (
     <FeedbackBar variant="correct">
@@ -18,7 +20,7 @@ export function CorrectFeedbackBar({
           <FeedbackLinks variant="correct" />
         </div>
       </div>
-      <ContinueButton variant="correct" onContinue={onContinue} />
+      <ContinueButton variant="correct" onContinue={onContinue} disabled={continueDisabled} />
     </FeedbackBar>
   );
 }
@@ -28,11 +30,13 @@ export function IncorrectFeedbackBar({
   japanese,
   meaning,
   onContinue,
+  continueDisabled = false,
 }: {
   romaji: string;
   japanese: string;
   meaning: string;
   onContinue?: () => void;
+  continueDisabled?: boolean;
 }) {
   return (
     <FeedbackBar variant="incorrect">
@@ -49,7 +53,7 @@ export function IncorrectFeedbackBar({
           <FeedbackLinks variant="incorrect" />
         </div>
       </div>
-      <ContinueButton variant="incorrect" onContinue={onContinue} />
+      <ContinueButton variant="incorrect" onContinue={onContinue} disabled={continueDisabled} />
     </FeedbackBar>
   );
 }
@@ -97,9 +101,11 @@ function FeedbackLinks({ variant }: { variant: "correct" | "incorrect" }) {
 function ContinueButton({
   variant,
   onContinue,
+  disabled = false,
 }: {
   variant: "correct" | "incorrect";
   onContinue?: () => void;
+  disabled?: boolean;
 }) {
   const classes =
     variant === "correct"
@@ -110,7 +116,8 @@ function ContinueButton({
     <button
       type="button"
       onClick={onContinue}
-      className={`min-w-[180px] shrink-0 rounded-2xl border-2 border-b-4 px-8 py-3.5 text-[13px] font-extrabold uppercase tracking-wide transition-all hover:brightness-110 active:border-b-2 active:translate-y-[2px] ${classes}`}
+      disabled={disabled}
+      className={`min-w-[180px] shrink-0 rounded-2xl border-2 border-b-4 px-8 py-3.5 text-[13px] font-extrabold uppercase tracking-wide transition-all hover:brightness-110 active:border-b-2 active:translate-y-[2px] disabled:cursor-not-allowed disabled:opacity-60 ${classes}`}
     >
       Continue
     </button>

@@ -38,6 +38,11 @@ export function LessonHeader({
         )}
         <div className="h-4 overflow-hidden rounded-full bg-[#37464f]">
           <div
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress)}
+            aria-label="Lesson progress"
             className="h-full rounded-full bg-[#58cc02] transition-all"
             style={{ width: `${progress}%` }}
           />

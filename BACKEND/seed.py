@@ -154,6 +154,7 @@ def seed_db() -> None:
                     prompt="Translate: Thank you",
                     data={
                         "word_bank": ["ありがとう", "こんにちは", "さようなら", "おはよう"],
+                        "expected_word_count": 1,
                     },
                     correct_answer=["ありがとう"],
                 ),
@@ -205,6 +206,7 @@ def seed_db() -> None:
                     prompt="Translate: Good afternoon",
                     data={
                         "word_bank": ["こんにちは", "おはよう", "さようなら", "ありがとう"],
+                        "expected_word_count": 1,
                     },
                     correct_answer=["こんにちは"],
                 ),
@@ -301,7 +303,7 @@ def seed_db() -> None:
                 order_index=len([e for e in exercises if e.lesson_id == lesson3.id]),
                 type=ExerciseType.translate,
                 prompt="Translate: water",
-                data={"word_bank": ["みず", "すし", "いぬ", "ねこ"]},
+                data={"word_bank": ["みず", "すし", "いぬ", "ねこ"], "expected_word_count": 1},
                 correct_answer=["みず"],
             )
         )
@@ -389,7 +391,7 @@ def seed_db() -> None:
                 order_index=len([e for e in exercises if e.lesson_id == lesson4.id]),
                 type=ExerciseType.translate,
                 prompt="Translate: I am a student",
-                data={"word_bank": ["わたし", "は", "がくせい", "です", "ほん"]},
+                data={"word_bank": ["わたし", "は", "がくせい", "です", "ほん"], "expected_word_count": 4},
                 correct_answer=["わたし", "は", "がくせい", "です"],
             )
         )

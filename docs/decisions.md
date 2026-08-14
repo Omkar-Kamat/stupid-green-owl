@@ -1,133 +1,257 @@
 # Architectural Decisions
 
-## Abstractions Used
+Recorded decisions for the Stupid Green Owl demo platform. Each entry includes classification (`BUILD` or `DESIGN-ONLY`), the concrete problem solved, and scope impact.
 
-### Repository Layer
-- **Classification**: `BUILD`
-- **Concrete Problem**: Separates persistence queries (e.g., zip trees to avoid N+1 queries) from business logic, allowing testable services via fakes. Keeps SQL out of routes.
-- **Why simpler alternative is insufficient**: Copy-pasting SQLAlchemy `selectinload` queries across endpoints violates DRY and mixes HTTP concerns with SQL.
-- **Scope Impact**: Marginally increases file count, zero impact on DB structure, significantly reduces test fragility.
+Cross-references: `docs/architecture.md`, `docs/database.md`, `docs/api-contract.md`, `AGENTS.md`.
 
-### Answer Evaluator Registry (Strategy Pattern)
-- **Classification**: `BUILD`
-- **Concrete Problem**: Validating exercise answers correctly based on exercise type without enormous `if/elif/else` blocks inside `LessonService`.
-- **Why simpler alternative is insufficient**: A giant conditional block is rigid, untestable in isolation, and violates Open-Closed Principle.
-- **Scope Impact**: 5 specific classes implementing a `Protocol`, mapped in a `dict`. Extremely lightweight and built for the 24h scope.
+---
 
-### Gamification Service Seam
-- **Classification**: `BUILD`
-- **Concrete Problem**: The `complete_lesson` function must update XP, streak, and unlock progress without becoming a monolithic 300-line method.
-- **Why simpler alternative is insufficient**: A single method managing 4 separate domains (lessons, stats, streaks, skills) is unmaintainable.
-- **Scope Impact**: Moving the logic into `GamificationService.handle_lesson_completed()`. Still a synchronous method call.
+## BUILD Decisions
 
-### Infinite Practice (Completed -> New Attempt)
-- **Classification**: `BUILD`
-- **Concrete Problem**: Users want to practice lessons they've already completed, or retry failed ones.
-- **Why simpler alternative is insufficient**: Forbidding restarting restricts natural learning mechanics. Un-completing an old attempt ruins historical data.
-- **Scope Impact**: The `LessonService.start_lesson` simply mints a *new* `in_progress` attempt if the existing attempt is `completed` or `failed`.
+### Layered backend (Route → Service → Repository)
 
-### Concurrency Recovery via IntegrityError Re-fetch
-- **Classification**: `BUILD`
-- **Concrete Problem**: Double-clicking "Start Lesson" creates a race condition attempting to insert two `in_progress` rows, triggering SQLite `IntegrityError` due to partial unique index.
-- **Why simpler alternative is insufficient**: Returning 500 crashes the client. Returning 409 Conflict creates a poor UX requiring manual retry.
-- **Scope Impact**: The Service catches `IntegrityError`, issues `db.rollback()`, and automatically re-queries to return the active attempt as a "Resume".
+- **Problem:** Business rules mixed with HTTP and SQL become untestable and leak across features.
+- **Alternative considered:** Fat controllers with inline SQLAlchemy.
+- **Why insufficient:** Violates `AGENTS.md`; every feature change touches HTTP layer.
+- **Impact:** ~6 route files, 5 services, 6 repositories. Clear ownership.
 
-### 409 Conflict for LESSON_HAS_NO_EXERCISES
-- **Classification**: `BUILD`
-- **Concrete Problem**: A user attempts to start a lesson that has no exercises assigned.
-- **Why simpler alternative is insufficient**: Returning 500 implies a transient crash. Returning 422 implies user input is flawed. The lesson exists (so not 404), but its internal integrity state conflicts with the action of "starting" it. 409 Conflict correctly expresses that the server state prohibits the operation.
-- **Scope Impact**: The `LessonService` explicitly checks exercise count and raises a ConflictError.
+### Fake auth via `get_current_user` dependency
 
-## Deliberately NOT Built Capabilities
+- **Problem:** Need end-to-end flows without building real auth in 24 hours.
+- **Alternative considered:** No auth at all (no user_id in services).
+- **Why insufficient:** Services would lack explicit user context; real auth swap would touch every signature.
+- **Impact:** Single dependency to replace. All services take `user_id: int`. Attempt ownership checks already in place.
 
-### Caching (Redis) for Path & Leaderboard
-- **Classification**: `DESIGN-ONLY`
-- **Why not now**: Traffic volume for 24-hour demo user scope is low. SQLite querying `ORDER BY total_xp` is instantaneous for <100 seeded rows.
-- **What it takes later**: Provision Redis. Store `total_xp` in a Redis Sorted Set updated inside `handle_lesson_completed`. Shift `/leaderboard` to query the sorted set instead of DB.
+### Server-authoritative gamification
 
-### Event Bus / Message Broker
-- **Classification**: `DESIGN-ONLY`
-- **Why not now**: Three synchronous method calls for streak, XP, and skill unlocks are well within bounds for a single HTTP transaction and don't justify queuing infrastructure.
-- **What it takes later**: Stand up RabbitMQ/Kafka. Refactor `GamificationService` to publish a `LessonCompletedEvent`. Create separate worker services subscribed to this topic to handle XP/streak independently.
+- **Problem:** Client could spoof XP, hearts, streak, unlock state.
+- **Decision:** Backend computes and persists all progression. Client sends only answers.
+- **Impact:** `GamificationService`, `ProgressService`, DB CHECK constraints on hearts/XP.
 
-### Distributed Locking / Row-level Locks
-- **Classification**: `DESIGN-ONLY`
-- **Why not now**: Running on SQLite serialization (single file writer).
-- **What it takes later**: Swapping to Postgres and appending `with_for_update()` on attempt fetching inside `complete_lesson` to handle race conditions across concurrent replica pods.
+### Partial unique index — one active attempt per (user, lesson)
 
-### Background Jobs
-- **Classification**: `DESIGN-ONLY`
-- **Why not now**: Lazy heart regeneration on request is sufficient for now.
-- **What it takes later**: Provision Celery or similar to aggressively push notifications or regenerate hearts server-side continuously.
+- **Problem:** Concurrent "Start lesson" could create duplicate `in_progress` rows.
+- **Alternative considered:** App-level check only.
+- **Why insufficient:** Race between check and insert (`AGENTS.md` rule 8).
+- **Impact:** DB-enforced invariant + IntegrityError recovery in `LessonService.start_lesson`.
 
-### Horizontal Scaling
-- **Classification**: `DESIGN-ONLY`
-- **Why not now**: Scope requires only a single backend deployment container.
-- **What it takes later**: Remove local SQLite. Deploy Postgres on RDS. Deploy API behind an Application Load Balancer.
+### Terminal attempt states + new row on practice/retry
 
-### API Versioning beyond `/api/v1`
-- **Classification**: `DESIGN-ONLY`
-- **Why not now**: Currently iterating on the first release.
-- **What it takes later**: Introducing `/api/v2` namespace routes when structural schema changes occur to prevent breaking mobile client contracts.
+- **Problem:** Users need to practice completed lessons or retry failed ones without corrupting history.
+- **Alternative considered:** Mutate completed attempt back to `in_progress`.
+- **Why insufficient:** Loses completion audit trail; breaks idempotent `xp_awarded`.
+- **Impact:** `completed`/`failed` rows immutable; `start_lesson` inserts new row when no active attempt exists.
 
-## Feature 3C: Lesson Completion Design
+### IntegrityError recovery on concurrent start
 
-### 1. Completion Eligibility & 2. Final Cursor Semantics
-- **Decision**: A lesson attempt is eligible for completion only if `attempt.status == 'in_progress'` and `attempt.current_exercise_index == len(lesson.exercises)`.
-- **Reasoning**: This strict cursor validation ensures users cannot bypass exercises. If the cursor is less than the total exercises, the system returns `409 Conflict (LESSON_INCOMPLETE)`.
+- **Problem:** Second concurrent start hits partial unique index → SQLite error.
+- **Alternative considered:** Return 409 to client.
+- **Why insufficient:** Poor UX on double-click; client must manual retry.
+- **Impact:** Service catches error, rolls back, re-fetches active attempt, returns resume response.
 
-### 3. XP Formula
-- **Decision**: `xp_awarded = Skill.xp_reward_per_lesson`. There are no dynamic combo bonuses or multipliers for this scope.
+### Answer evaluator registry (Strategy pattern)
 
-### 4. Streak Rules & 5. Daily Goal Update
-- **Decision**: All activity-day calculations use UTC for this assignment.
-  - **Streak**: 
-    - If `last_activity_date < today - 1 day`, reset `current_streak` to 1.
-    - If `last_activity_date == today - 1 day`, increment `current_streak` by 1.
-    - If `last_activity_date == today`, `current_streak` remains unchanged.
-    - Always `longest_streak = max(longest_streak, current_streak)`.
-  - **Daily XP**:
-    - If `last_activity_date < today`, reset `daily_xp = xp_awarded`.
-    - If `last_activity_date == today`, `daily_xp += xp_awarded`.
-  - Finally, set `last_activity_date = today`.
+- **Problem:** Five exercise types with different validation/compare logic.
+- **Alternative considered:** Giant if/elif in `submit_answer`.
+- **Why insufficient:** Untestable, violates Open-Closed.
+- **Impact:** 5 small evaluator classes + `EVALUATORS` dict. Lightweight for scope.
 
-### 6. Skill XP / Crown Rules & 7. Unlock Cascade
-- **Decision**:
-  - `SkillProgress.xp_earned += xp_awarded`.
-  - `SkillProgress.lessons_completed_in_level += 1`.
-  - If `lessons_completed_in_level >= Skill.lessons_per_level`, reset it to `0` and increment `crown_level += 1`.
-  - **Unlock Cascade**: When a skill reaches `crown_level == 1` for the first time, its `status` becomes `completed`. The `ProgressService` must then query the next skill in the path (ordered by `unit.order_index`, then `skill.order_index`) and create its `SkillProgress` row with `status = 'available'` via `ProgressRepository.create_skill_progress()`.
+### Lazy heart regeneration (no cron)
 
-### 8. Idempotency using xp_awarded & 9. Duplicate/Concurrent Completion
-- **Decision**: `POST /complete` must be idempotent for **side effects** (XP awarded once, stored on `LessonAttempt.xp_awarded`). If the attempt is already completed, the handler returns the persisted `xp_awarded` and `crown_earned` without mutating stats again. **`total_xp` and `streak` in the response reflect the user's current `UserStats` at retry time**, not a frozen completion snapshot — document this for clients.
-- **Concurrent completion**: Completion is transactionally atomic under SQLite's single-writer model; concurrent duplicate requests are not explicitly retried/reconciled at the application layer.
+- **Problem:** Hearts should refill over time without background infrastructure.
+- **Decision:** Regenerate on read (`GET /me/stats`) and before consumption (`consume_heart`). 4-hour interval per heart.
+- **Alternative considered:** Celery/cron worker.
+- **Why insufficient:** Over-engineering for demo (`AGENTS.md` rule 10).
+- **Impact:** `GamificationService.regenerate_hearts`. Side-effecting GET on stats (documented).
 
-### 10. Transaction Boundary
-- **Decision**: `LessonService.complete_lesson()` opens a single transaction. It delegates mutations to `GamificationService` (updates `UserStats`) and `ProgressService` (updates `SkillProgress` and cascades unlocks), then mutates `LessonAttempt`. `LessonAttempt.status = COMPLETED` and `xp_awarded` are persisted atomically in the same transaction. A single `db.commit()` is issued. If any service fails, a `db.rollback()` prevents partial state.
+### Zero hearts → lesson failed (HTTP 200, not 403)
 
-### 11. Completion Response DTO & 12. Error Taxonomy
-- **DTO**: Returns `xp_awarded`, `total_xp`, `streak`, and `crown_earned` as defined in `api-contract.md`.
-- **Errors**:
-  - `409 Conflict`: `LESSON_INCOMPLETE` (not all exercises answered).
-  - `409 Conflict`: `ATTEMPT_ALREADY_TERMINATED` (if `status == failed`, or completed but missing cached `xp_awarded`).
-  - `404 Not Found`: `ATTEMPT_NOT_FOUND` (invalid attempt ID).
+- **Problem:** Wrong answer when hearts = 0 should end the attempt gracefully.
+- **Decision:** Return 200 with `lesson_failed: true`; do not attempt further heart deduction.
+- **Alternative considered:** 403 on heart consumption.
+- **Why rejected:** Client already in answer flow; 200 with flag matches Duolingo-style UX.
+- **Impact:** Documented in `docs/api-contract.md` and invariant §18.
 
-### 13. Required Repository Methods
-- **LessonRepository**: `get_skill(id)`, `get_next_skill(current_skill_id)`.
-- **ProgressRepository**: `get_skill_progress(user_id, skill_id)`, `create_skill_progress(progress)`.
-- **UserStatsRepository**: `get_stats_by_user_id(user_id)`.
-- **AttemptRepository**: `get_attempt_by_id(id)`.
+### Completion idempotency via `xp_awarded`
 
-### 14. Service Responsibilities and Boundaries
-- **LessonService**: Validates attempt state, opens transaction, coordinates domain services, saves attempt state, and handles commits/rollbacks.
-- **GamificationService**: owns gamification business rules and mutates UserStats within the caller-owned transaction. Ignorant of lessons or skills.
-- **ProgressService**: Purely handles crown math, `SkillProgress` mutations, and traversing the tree for unlock cascades. Ignorant of XP rules.
+- **Problem:** Network retry on complete must not double-award XP.
+- **Decision:** If `attempt.status == completed` and `xp_awarded` set, return cached values without mutating stats.
+- **Gap:** Concurrent in-flight completes not fully guarded — target fix uses conditional update or lock (see below).
 
-### 15. Complete Test Matrix
-- **Idempotency**: Retrying a completed attempt returns the same success DTO without side effects.
-- **Incomplete**: Fails with `LESSON_INCOMPLETE` if `cursor < len(exercises)`.
-- **Failed Attempt**: FAILED attempt -> complete -> 409 ATTEMPT_ALREADY_TERMINATED with zero gamification/progress side effects.
-- **Streak Calculation**: Same day (no change), next day (+1), broken streak (reset to 1).
-- **Crown Progression**: Correctly increments `lessons_completed_in_level` and triggers crown up.
-- **Unlock Cascade**: Completing the last lesson of a skill unlocks the next skill. Completing the last skill of a unit unlocks the first skill of the next unit.
-- **Transaction Rollback**: If an error is injected into `ProgressService`, `UserStats` and `LessonAttempt` rollbacks are verified.
+### Single transaction on lesson complete
+
+- **Problem:** Partial completion could leave XP awarded but attempt still in progress.
+- **Decision:** `LessonService.complete_lesson` — one `db.commit()` for attempt + stats + progress.
+- **Impact:** Rollback test in `test_lesson_completion.py`.
+
+### Deterministic seed reset
+
+- **Problem:** "Idempotent" partial seed left stale progress and confused demo state.
+- **Decision:** `seed.py` wipes content + users, recreates from scratch.
+- **Impact:** Predictable smoke test and fresh-install verification.
+
+### Canonical docs at `docs/` (lowercase)
+
+- **Problem:** Duplicate `DOCS/` and `docs/` trees caused drift.
+- **Decision:** Single canonical tree at `docs/`. OpenAPI at `docs/openapi.json`.
+
+### Frontend: dual lesson players
+
+- **Problem:** Early UI prototypes exist alongside API-driven player.
+- **Decision:** Production path uses `ApiLessonPlayer` on `/lesson/[lessonId]`. Prototype routes retained with banner.
+- **Impact:** Legacy `LessonPlayer` + `localStorage` progress isolated to demo routes.
+
+### SQLite for demo, Postgres-swappable
+
+- **Problem:** Assignment requires persistence; production would use Postgres.
+- **Decision:** `DATABASE_URL` env var; no SQLite-specific SQL in queries.
+- **Gap:** IntegrityError string matching is SQLite-specific today — target: portable constraint detection.
+
+---
+
+## DESIGN-ONLY Decisions
+
+### Redis / leaderboard cache
+
+- **Why not now:** Seeded leaderboard <100 rows; SQLite sort is instant.
+- **What it takes later:** Redis sorted set updated in `handle_lesson_completed`; `/leaderboard` reads from cache.
+
+### Event bus / message broker
+
+- **Why not now:** Synchronous service calls fit in one HTTP transaction.
+- **What it takes later:** Publish `LessonCompletedEvent`; worker services for XP/streak/achievements.
+
+### Background jobs for heart regeneration
+
+- **Why not now:** Lazy on-read regeneration is sufficient for demo.
+- **What it takes later:** Scheduled worker calling regen for active users; optional push notifications.
+
+### Distributed locking / `SELECT FOR UPDATE`
+
+- **Why not now:** Single-process SQLite demo.
+- **What it takes later:** Postgres + row locks on attempt fetch in `complete_lesson` for multi-instance API.
+
+### Horizontal scaling / load balancer
+
+- **Why not now:** Single container deployment.
+- **What it takes later:** Postgres, stateless API replicas, shared DB, sticky sessions or JWT auth.
+
+### Rate limiting
+
+- **Why not now:** Single demo user, local deployment.
+- **What it takes later:** Middleware (e.g. slowapi) on mutation endpoints.
+
+### Real authentication
+
+- **Why not now:** Explicitly stubbed in assignment scope.
+- **What it takes later:** Replace `get_current_user` with JWT/session validation; multi-user isolation tests.
+
+### TanStack Query on frontend
+
+- **Why not now:** `useState`/`useEffect` sufficient for demo; added dependency cost.
+- **What it takes later:** Centralized cache, deduped fetches, mutation invalidation — reduces duplicate `/me/stats` calls.
+
+### API v2 namespace
+
+- **Why not now:** First release; breaking changes acceptable in demo.
+- **What it takes later:** `/api/v2` when mobile clients need stable contracts.
+
+### CDN / object storage for audio
+
+- **Why not now:** Type-answer exercises use text prompts only.
+- **What it takes later:** S3 + signed URLs for listening exercises.
+
+---
+
+## Feature Decisions (Lesson Completion)
+
+### Completion eligibility
+
+- **Decision:** `attempt.status == in_progress` AND `current_exercise_index == len(exercises)`.
+- **Reasoning:** Cursor only advances on correct answers; index at length means all exercises passed.
+
+### XP formula
+
+- **Decision:** `xp_awarded = Skill.xp_reward_per_lesson` (default 10 in seed). No combo multipliers.
+
+### Streak rules (UTC)
+
+| Condition | Effect |
+|---|---|
+| First activity ever | `current_streak = 1` |
+| `last_activity_date == yesterday` | `current_streak += 1` |
+| `last_activity_date == today` | streak unchanged |
+| Gap ≥ 2 days | `current_streak = 1` |
+| Always | `longest_streak = max(longest_streak, current_streak)` |
+
+### Daily XP
+
+| Condition | Effect |
+|---|---|
+| `last_activity_date < today` | `daily_xp = xp_awarded` |
+| Same day | `daily_xp += xp_awarded` |
+
+### Crown and unlock cascade
+
+1. `SkillProgress.xp_earned += xp_awarded`
+2. `lessons_completed_in_level += 1`
+3. If `lessons_completed_in_level >= skill.lessons_per_level`: reset counter, `crown_level += 1`
+4. When `crown_level == 1`: `status = completed`, unlock next skill via `get_next_skill` (same unit, then cross-unit)
+
+### Completion response semantics
+
+- `xp_awarded`, `crown_earned`: cached from attempt on retry.
+- `total_xp`, `streak`: live from `UserStats` on every response.
+
+### Concurrent completion (known limitation)
+
+- **Current:** SQLite serializes writes; sequential retry idempotency works.
+- **Target:** Application-level guard (conditional update) + concurrent test.
+- **Documented in:** `BACKEND/README.md` Known Limitations, `docs/architecture.md` G2.
+
+---
+
+## Rejected Alternatives
+
+| Alternative | Why rejected |
+|---|---|
+| Generic repository-of-repositories | `AGENTS.md` rule 9 — unnecessary abstraction |
+| Redis in demo | `AGENTS.md` rule 10 — design-only |
+| Client-side heart tracking in production | Violates server authority |
+| Mutating completed attempts for practice | Breaks audit trail and idempotency |
+| 403 when hearts hit zero mid-lesson | Worse UX than 200 + `lesson_failed` |
+
+---
+
+## Test Matrix (Required vs Verified)
+
+| Case | Required | Verified test |
+|---|---|---|
+| Sequential completion idempotency | Yes | `test_idempotent_retry` |
+| Concurrent completion idempotency | Yes | **Missing** |
+| Incomplete lesson → 409 | Yes | `test_incomplete_lesson` |
+| Failed attempt → complete 409 | Yes | `test_failed_attempt` |
+| Streak same/next/broken day | Yes | `test_same_day_streak`, `test_broken_streak` |
+| Same-unit unlock cascade | Yes | `test_successful_completion_and_crown_cascade` |
+| Cross-unit unlock cascade | Yes | **Missing** |
+| Completion transaction rollback | Yes | `test_completion_transaction_rollback_on_failure` |
+| Wrong answer hearts −1, cursor unchanged | Yes | `test_answers.py`, smoke test |
+| Heart regen capped at max | Yes | `test_heart_regeneration.py` |
+| Partial unique active attempt | Yes | `test_database_invariants.py` |
+
+---
+
+## Current-State Problems → Target (Summary)
+
+All items below were resolved in the current codebase. Kept for audit trail.
+
+| Problem | Resolution |
+|---|---|
+| User routes return ORM | `UserService` returns explicit DTOs |
+| Concurrent double XP | `try_complete_attempt` + poll fallback + tests |
+| Frontend hardcoded stats | `UserStatsProvider` wired across panels |
+| Skill id = lesson id assumption | Path API `lesson_id`; frontend routes via it |
+| Tests use `create_all()` | Alembic `upgrade head` in `conftest.py` |
+| No frontend tests | Vitest + RTL (26 tests) |
+
+**Architecture status:** Demo-ready. Optional: real auth, Playwright e2e, Postgres concurrency.

@@ -10,11 +10,29 @@ import { useOptionalUserStats } from "@/components/providers/UserStatsProvider";
 const LANGUAGES_LEARNING = 1;
 
 export function LearnStatsBar({ className = "" }: { className?: string }) {
-  const { stats, loading } = useOptionalUserStats() ?? {};
+  const context = useOptionalUserStats();
+  const { stats, loading, error, refresh } = context ?? {};
 
-  const streak = loading ? "…" : String(stats?.current_streak ?? 0);
-  const gems = loading ? "…" : String(stats?.gems ?? 0);
-  const hearts = loading ? "…" : String(stats?.hearts ?? 0);
+  if (error) {
+    return (
+      <div className={`flex flex-col gap-2 ${className}`}>
+        <p className="text-[13px] font-bold text-[#ff4b4b]">{error}</p>
+        {refresh && (
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="self-start text-[12px] font-extrabold uppercase tracking-wide text-[#1cb0f6] hover:underline"
+          >
+            Retry
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const streak = loading ? "…" : stats ? String(stats.current_streak) : "—";
+  const gems = loading ? "…" : stats ? String(stats.gems) : "—";
+  const hearts = loading ? "…" : stats ? String(stats.hearts) : "—";
 
   return (
     <div className={`flex items-center justify-between gap-3 ${className}`}>

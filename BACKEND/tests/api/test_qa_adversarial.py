@@ -20,7 +20,12 @@ def test_path_strictly_respects_database_status_overriding_logical_order(client,
     skill2 = Skill(unit_id=unit.id, title="Skill 2", icon="hand", order_index=1)
     db.add_all([skill1, skill2])
     db.flush()
-    
+
+    lesson1 = Lesson(skill_id=skill1.id, order_index=0)
+    lesson2 = Lesson(skill_id=skill2.id, order_index=0)
+    db.add_all([lesson1, lesson2])
+    db.flush()
+
     # Adversarial DB state: skill 1 completed, but skill 2 is explicitly locked.
     # The API should strictly return locked for skill 2, proving it doesn't derive available automatically.
     progress1 = SkillProgress(user_id=1, skill_id=skill1.id, status=ProgressStatus.completed)

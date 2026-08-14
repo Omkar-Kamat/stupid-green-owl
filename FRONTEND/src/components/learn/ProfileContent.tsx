@@ -2,34 +2,38 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useUserStats } from "@/components/providers/UserStatsProvider";
 import { meApi } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-errors";
-import type { UserResponse, UserStatsResponse } from "@/lib/api/types";
+import type { UserResponse } from "@/lib/api/types";
 
 export function ProfileContent() {
+  const { stats, loading: statsLoading, error: statsError, refresh: refreshStats } =
+    useUserStats();
   const [profile, setProfile] = useState<UserResponse | null>(null);
-  const [stats, setStats] = useState<UserStatsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  const loadProfile = useCallback(async () => {
+    setProfileLoading(true);
+    setProfileError(null);
+    try {
+      const user = await meApi.getProfile();
+      setProfile(user);
+    } catch (err) {
+      setProfileError(getApiErrorMessage(err));
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [user, userStats] = await Promise.all([
-          meApi.getProfile(),
-          meApi.getStats(),
-        ]);
-        setProfile(user);
-        setStats(userStats);
-      } catch (err) {
-        setError(getApiErrorMessage(err));
-      } finally {
-        setLoading(false);
-      }
-    }
-    void load();
-  }, []);
+    void loadProfile();
+  }, [loadProfile]);
+
+  const loading = profileLoading || statsLoading;
+  const error = profileError ?? statsError;
 
   if (loading) {
     return (
@@ -41,10 +45,20 @@ export function ProfileContent() {
 
   if (error || !profile || !stats) {
     return (
-      <div className="mx-auto w-full max-w-[720px] px-4 pb-16 pt-6 md:px-6">
+      <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4 px-4 pb-16 pt-6 md:px-6">
         <p className="text-[15px] font-bold text-[#ff4b4b]">
           {error ?? "Could not load profile."}
         </p>
+        <button
+          type="button"
+          onClick={() => {
+            void loadProfile();
+            void refreshStats();
+          }}
+          className="self-start rounded-2xl border-2 border-b-4 border-[#1899d6] bg-[#1cb0f6] px-5 py-2.5 text-[13px] font-extrabold uppercase tracking-wide text-white"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -117,7 +131,17 @@ function ProfileHeader({ username, joined }: { username: string; joined: string 
   );
 }
 
-function StatisticsSection({ stats }: { stats: UserStatsResponse }) {
+function StatisticsSection({
+  stats,
+}: {
+  stats: {
+    current_streak: number;
+    total_xp: number;
+    hearts: number;
+    max_hearts: number;
+    gems: number;
+  };
+}) {
   return (
     <section className="mt-10">
       <h2 className="mb-4 text-[22px] font-extrabold text-white">Statistics</h2>

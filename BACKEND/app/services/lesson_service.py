@@ -6,9 +6,11 @@ from app.schemas.path import PathResponse, UnitResponse, SkillPathResponse
 from app.schemas.lesson import StartLessonResponse, ExerciseResponse, AnswerRequest, AnswerResponse, CompleteResponse
 from app.services.evaluators import EVALUATORS
 from datetime import datetime, timezone
+import time
 from app.models.domain import LessonAttempt, AttemptStatus, ExerciseAttempt
 from app.core.config import settings
 from app.core.exceptions import NotFoundError, ForbiddenError, ConflictError
+from app.core.db_errors import is_unique_violation
 from sqlalchemy.exc import IntegrityError
 from app.services.gamification_service import GamificationService
 from app.services.progress_service import ProgressService
@@ -30,12 +32,28 @@ class LessonService:
         self.gamification_service = gamification_service
         self.progress_service = progress_service
 
+    def _resolve_skill_status(self, user_id: int, skill_id: int) -> str:
+        progress = self.progress_repo.get_skill_progress(user_id, skill_id)
+        if progress:
+            return progress.status.value
+
+        first_skill = self.lesson_repo.get_first_skill_in_course(settings.DEFAULT_COURSE_ID)
+        if first_skill and first_skill.id == skill_id:
+            return "available"
+        return "locked"
+
     def get_path(self, user_id: int) -> PathResponse:
         units = self.lesson_repo.get_course_tree(course_id=settings.DEFAULT_COURSE_ID)
         user_progress = self.progress_repo.get_user_progress(user_id)
         
         unit_responses = []
         is_first_skill_overall = True
+        all_skill_ids = [
+            skill.id
+            for unit in units
+            for skill in sorted(unit.skills, key=lambda s: s.order_index)
+        ]
+        primary_lesson_ids = self.lesson_repo.get_primary_lesson_ids_for_skills(all_skill_ids)
 
         for unit in units:
             sorted_skills = sorted(unit.skills, key=lambda s: s.order_index)
@@ -45,8 +63,6 @@ class LessonService:
                 progress = user_progress.get(skill.id)
                 crown_level = progress.crown_level if progress else 0
                 
-                # Trust the database state if it exists. 
-                # Only derive default initial state if no progress record exists.
                 if progress:
                     status = progress.status.value
                     is_first_skill_overall = False
@@ -55,6 +71,10 @@ class LessonService:
                     is_first_skill_overall = False
                 else:
                     status = "locked"
+
+                lesson_id = primary_lesson_ids.get(skill.id)
+                if lesson_id is None:
+                    raise ConflictError("CORRUPTED_LESSON_STATE")
                 
                 skill_responses.append(
                     SkillPathResponse(
@@ -62,7 +82,8 @@ class LessonService:
                         title=skill.title,
                         icon=skill.icon,
                         status=status,
-                        crown_level=crown_level
+                        crown_level=crown_level,
+                        lesson_id=lesson_id,
                     )
                 )
                 
@@ -84,21 +105,22 @@ class LessonService:
         
         if not lesson.exercises:
             raise ConflictError("LESSON_HAS_NO_EXERCISES")
-            
-        path = self.get_path(user_id)
-        skill_status = "locked"
-        for unit in path.units:
-            for skill in unit.skills:
-                if skill.id == lesson.skill_id:
-                    skill_status = skill.status.value
-                    break
-        
+
+        skill_status = self._resolve_skill_status(user_id, lesson.skill_id)
         if skill_status == "locked":
             raise ForbiddenError("SKILL_LOCKED")
             
         stats = self.user_stats_repo.get_stats_by_user_id(user_id)
         if not stats:
             raise ConflictError("CORRUPTED_USER_STATS")
+
+        if self.gamification_service.regenerate_hearts(stats):
+            try:
+                self.user_stats_repo.db.commit()
+            except Exception:
+                self.user_stats_repo.db.rollback()
+                raise
+
         hearts_remaining = stats.hearts
         
         for attempt_idx in range(2):
@@ -120,7 +142,7 @@ class LessonService:
                 return self._build_start_response(new_attempt, hearts_remaining, lesson.exercises)
             except IntegrityError as e:
                 self.attempt_repo.db.rollback()
-                if "UNIQUE constraint failed" not in str(e.orig):
+                if not is_unique_violation(e):
                     raise
                 if attempt_idx == 1:
                     raise ConflictError("CORRUPTED_LESSON_STATE")
@@ -198,7 +220,7 @@ class LessonService:
             self.attempt_repo.db.commit()
         except IntegrityError as e:
             self.attempt_repo.db.rollback()
-            if "UNIQUE constraint failed" not in str(e.orig):
+            if not is_unique_violation(e):
                 raise
             raise ConflictError("EXERCISE_ALREADY_ANSWERED")
         except Exception:
@@ -217,61 +239,108 @@ class LessonService:
         attempt = self.attempt_repo.get_attempt_by_id(attempt_id)
         if not attempt:
             raise NotFoundError("ATTEMPT", attempt_id)
-            
+
         if attempt.user_id != user_id:
             raise ForbiddenError("ATTEMPT_FORBIDDEN")
-            
+
         if attempt.status == AttemptStatus.failed:
             raise ConflictError("ATTEMPT_ALREADY_TERMINATED")
-            
+
         stats = self.user_stats_repo.get_stats_by_user_id(user_id)
         if not stats:
             raise ConflictError("CORRUPTED_USER_STATS")
-            
+
         if attempt.status == AttemptStatus.completed:
             if attempt.xp_awarded is not None:
                 return CompleteResponse(
                     xp_awarded=attempt.xp_awarded,
                     total_xp=stats.total_xp,
                     streak=stats.current_streak,
-                    crown_earned=bool(attempt.crown_earned)
+                    crown_earned=bool(attempt.crown_earned),
                 )
-            else:
-                raise ConflictError("ATTEMPT_ALREADY_TERMINATED")
-                
+            raise ConflictError("ATTEMPT_ALREADY_TERMINATED")
+
         lesson = self.lesson_repo.get_lesson_with_exercises(attempt.lesson_id)
         if not lesson:
             raise ConflictError("CORRUPTED_LESSON_STATE")
-            
+
         if attempt.current_exercise_index < len(lesson.exercises):
             raise ConflictError("LESSON_INCOMPLETE")
-            
+
         if attempt.current_exercise_index > len(lesson.exercises):
             raise ConflictError("CORRUPTED_LESSON_STATE")
-            
+
+        answered_count = self.attempt_repo.count_exercise_attempts(attempt_id)
+        if answered_count < len(lesson.exercises):
+            raise ConflictError("LESSON_INCOMPLETE")
+
         skill = self.lesson_repo.get_skill(lesson.skill_id)
         if not skill:
             raise ConflictError("CORRUPTED_LESSON_STATE")
-            
+
         xp_reward = skill.xp_reward_per_lesson
-        
+        completed_at = datetime.now(timezone.utc)
+
+        if not self.attempt_repo.try_complete_attempt(
+            attempt_id, user_id, xp_reward, completed_at
+        ):
+            self.attempt_repo.db.rollback()
+            return self._wait_for_completed_attempt(user_id, attempt_id)
+
+        attempt = self.attempt_repo.get_attempt_by_id(attempt_id)
+        if not attempt:
+            raise ConflictError("CORRUPTED_LESSON_STATE")
+
         try:
             self.gamification_service.handle_lesson_completed(stats, xp_reward)
             crown_earned = self.progress_service.handle_lesson_completed(user_id, skill, xp_reward)
-            
-            attempt.status = AttemptStatus.completed
-            attempt.xp_awarded = xp_reward
             attempt.crown_earned = crown_earned
-            attempt.completed_at = datetime.now(timezone.utc)
-            
+
             self.attempt_repo.db.commit()
-            
+
             return CompleteResponse(
                 xp_awarded=xp_reward,
                 total_xp=stats.total_xp,
                 streak=stats.current_streak,
-                crown_earned=crown_earned
+                crown_earned=crown_earned,
             )
+        except IntegrityError as exc:
+            self.attempt_repo.db.rollback()
+            if is_unique_violation(exc):
+                attempt = self.attempt_repo.get_attempt_by_id(attempt_id)
+                stats = self.user_stats_repo.get_stats_by_user_id(user_id)
+                if (
+                    attempt
+                    and attempt.status == AttemptStatus.completed
+                    and attempt.xp_awarded is not None
+                    and stats
+                ):
+                    return CompleteResponse(
+                        xp_awarded=attempt.xp_awarded,
+                        total_xp=stats.total_xp,
+                        streak=stats.current_streak,
+                        crown_earned=bool(attempt.crown_earned),
+                    )
+            raise
         except Exception:
             self.attempt_repo.db.rollback()
             raise
+
+    def _wait_for_completed_attempt(self, user_id: int, attempt_id: int) -> CompleteResponse:
+        for _ in range(50):
+            attempt = self.attempt_repo.get_attempt_by_id(attempt_id)
+            stats = self.user_stats_repo.get_stats_by_user_id(user_id)
+            if (
+                attempt
+                and attempt.status == AttemptStatus.completed
+                and attempt.xp_awarded is not None
+                and stats
+            ):
+                return CompleteResponse(
+                    xp_awarded=attempt.xp_awarded,
+                    total_xp=stats.total_xp,
+                    streak=stats.current_streak,
+                    crown_earned=bool(attempt.crown_earned),
+                )
+            time.sleep(0.002)
+        raise ConflictError("ATTEMPT_ALREADY_TERMINATED")

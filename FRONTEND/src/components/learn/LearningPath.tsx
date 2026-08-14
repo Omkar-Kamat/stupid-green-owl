@@ -10,12 +10,8 @@ const RING_RADIUS = 40;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const UNIT_OFFSETS = [0, 56, -56, 56, 0];
 
-/**
- * Seed data creates one lesson per skill with matching numeric ids (skill 1 → lesson 1).
- * Backend path only returns skill ids; there is no skill→lesson lookup endpoint yet.
- */
-function lessonHrefForSkill(skillId: number): string {
-  return `/lesson/${skillId}`;
+function lessonHrefForSkill(skill: SkillPathResponse): string {
+  return `/lesson/${skill.lesson_id}`;
 }
 
 export function LearningPath() {
@@ -80,7 +76,11 @@ export function LearningPath() {
   const activeSkillIndex = flatSkills.findIndex(
     (item) => item.skill.status === "available",
   );
-  const activeItem = activeSkillIndex >= 0 ? flatSkills[activeSkillIndex] : flatSkills[0];
+  const activeItem =
+    activeSkillIndex >= 0
+      ? flatSkills[activeSkillIndex]
+      : [...flatSkills].reverse().find((item) => item.skill.status === "completed") ??
+        flatSkills[flatSkills.length - 1];
 
   return (
     <div className="flex min-h-full flex-col">
@@ -119,7 +119,7 @@ export function LearningPath() {
                   href={
                     item.skill.status === "locked"
                       ? undefined
-                      : lessonHrefForSkill(item.skill.id)
+                      : lessonHrefForSkill(item.skill)
                   }
                 />
               </div>

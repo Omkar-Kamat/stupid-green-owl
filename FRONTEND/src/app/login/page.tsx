@@ -50,7 +50,11 @@ export default function LoginPage() {
               loginAndGo("/learn/japanese");
             }}
           >
+            <label htmlFor="login-username" className="sr-only">
+              Email or username
+            </label>
             <input
+              id="login-username"
               type="text"
               name="username"
               value={username}
@@ -61,7 +65,11 @@ export default function LoginPage() {
             />
 
             <div className="relative">
+              <label htmlFor="login-password" className="sr-only">
+                Password
+              </label>
               <input
+                id="login-password"
                 type="password"
                 name="password"
                 value={password}

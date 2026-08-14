@@ -59,6 +59,16 @@ def test_negative_xp_earned_rejected(db, base_data):
     with pytest.raises(IntegrityError):
         db.commit()
 
+def test_negative_gems_rejected(db, base_data):
+    user, lesson, skill = base_data
+    from app.models.domain import UserStats
+
+    stats = UserStats(user_id=user.id, gems=-1, hearts=5, max_hearts=5)
+    db.add(stats)
+    with pytest.raises(IntegrityError):
+        db.commit()
+
+
 def test_unique_active_attempt_invariant(db, base_data):
     user, lesson, skill = base_data
     attempt1 = LessonAttempt(

@@ -1,6 +1,7 @@
-from app.models.domain import User, UserStats
+from app.models.domain import UserStats
 from app.repositories.user_repository import UserRepository, UserStatsRepository
 from app.services.gamification_service import GamificationService
+from app.schemas.user import UserResponse, UserStatsResponse
 from app.core.exceptions import NotFoundError, ConflictError
 
 class UserService:
@@ -9,13 +10,13 @@ class UserService:
         self.stats_repo = stats_repo
         self.gamification_service = gamification_service
 
-    def get_me(self, user_id: int) -> User:
+    def get_me(self, user_id: int) -> UserResponse:
         user = self.user_repo.get_user_by_id(user_id)
         if not user:
             raise NotFoundError("USER", user_id)
-        return user
+        return UserResponse.model_validate(user)
 
-    def get_my_stats(self, user_id: int) -> UserStats:
+    def get_my_stats(self, user_id: int) -> UserStatsResponse:
         stats = self.stats_repo.get_stats_by_user_id(user_id)
         if not stats:
             raise NotFoundError("USER_STATS", user_id)
@@ -27,9 +28,9 @@ class UserService:
                 self.stats_repo.db.rollback()
                 raise
             
-        return stats
+        return UserStatsResponse.model_validate(stats)
 
-    def refill_hearts(self, user_id: int) -> UserStats:
+    def refill_hearts(self, user_id: int) -> UserStatsResponse:
         stats = self.stats_repo.get_stats_by_user_id(user_id)
         if not stats:
             raise NotFoundError("USER_STATS", user_id)
@@ -48,4 +49,4 @@ class UserService:
         except Exception:
             self.stats_repo.db.rollback()
             raise
-        return stats
+        return UserStatsResponse.model_validate(stats)

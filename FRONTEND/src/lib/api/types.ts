@@ -29,6 +29,7 @@ export type SkillPathResponse = {
   icon: string;
   status: SkillStatus;
   crown_level: number;
+  lesson_id: number;
 };
 
 export type UnitResponse = {

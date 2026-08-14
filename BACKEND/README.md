@@ -153,6 +153,6 @@ Deployment must not rely on the local SQLite file being pre-populated. Startup s
 ## Known Limitations
 - The `type_answer` evaluator currently uses strict string equality. NLP/Levenshtein distance matching would be required for a production typo-forgiving experience.
 - Leaderboard uses a direct `ORDER BY total_xp DESC` query which scales poorly. A real system would use a Redis Sorted Set (ZSET).
-- **`POST /complete` concurrent retries** are not reconciled beyond SQLite single-writer semantics; duplicate in-flight completions are a known scope limitation.
+- **`POST /complete` concurrent retries** use a conditional DB update (`try_complete_attempt`) with a brief poll fallback so losing requests return the cached completion response once the winner commits. True threaded HTTP races on SQLite remain environment-limited.
 - **Concurrent wrong-answer submissions** can consume multiple hearts (only duplicate *correct* answers are blocked by a partial unique index).
-- **`start_lesson` loads the full path** to resolve skill lock state — acceptable for demo scope; noted as P2 query optimization debt.
+- **`GET /path` lesson lookup** batch-fetches primary `lesson_id` per skill in one query (no per-skill N+1).

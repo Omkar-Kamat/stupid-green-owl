@@ -1,43 +1,141 @@
 # API Contract
 
-All endpoints are versioned under `/api/v1/` and return structured Pydantic DTOs, not DB entities.
-Authentication (for the 24-hour scope) is a dependency `get_current_user` injecting `DEFAULT_USER_ID=1` (demo user).
+Target contract for all HTTP endpoints. Describes **required behavior**; where the current implementation differs, see [Implementation Notes](#implementation-notes).
 
-## Shared Error Structure
+- **Versioned API prefix:** `/api/v1`
+- **OpenAPI spec (canonical):** `docs/openapi.json` — regenerate with `BACKEND/scripts/export_openapi.sh` while server is running
+- **Error codes:** `docs/error-taxonomy.md`
+- **Auth (demo scope):** `get_current_user` → `DEFAULT_USER_ID=1`; no auth headers required
 
-Domain errors return:
+All success responses use Pydantic DTOs, not raw ORM entities. Services return explicit DTOs for user and lesson routes.
+
+---
+
+## Shared Conventions
+
+### Authentication
+
+Every `/api/v1/*` endpoint requires the `get_current_user` dependency. In demo mode this always resolves to user id `1`. No `Authorization` header is read.
+
+### Error shape
+
+Domain errors:
 
 ```json
 { "detail": "SKILL_LOCKED" }
 ```
 
-FastAPI validation errors (422) return the standard `detail: [{ loc, msg, ... }]` array.
+FastAPI/Pydantic validation (422):
 
-Custom domain error codes (`403`, `409`, `422`) are mapped in `app/main.py` but are **not** declared on individual route OpenAPI responses — consult `docs/error-taxonomy.md` for the full list.
+```json
+{
+  "detail": [
+    { "loc": ["body", "answer"], "msg": "...", "type": "..." }
+  ]
+}
+```
+
+### Server-authoritative fields
+
+The client must **never** send: XP, hearts, streak, skill status, crown level, or completion flags. Only:
+
+- `exercise_id` + `answer` on answer submit
+- Path params (`lesson_id`, `attempt_id`) on resource URLs
 
 ---
 
-## Answer payload shapes (`POST .../answers`)
+## Endpoints
 
-`AnswerRequest.answer` is polymorphic. The evaluator for each exercise type expects:
+### `GET /health-check`
 
-| Exercise type | `answer` JSON shape | Example |
-|---|---|---|
-| `multiple_choice` | `string` | `"あ"` |
-| `translate` | `string[]` | `["ありがとう"]` |
-| `fill_blank` | `string[]` | `["り"]` |
-| `match_pairs` | `object` (pair id → right option id) | `{"p1": "r1", "p2": "r2"}` |
-| `type_answer` | `string` | `"a"` |
+Unversioned health probe for deploy scripts and smoke tests.
 
-Malformed shapes return `422 INVALID_ANSWER_PAYLOAD`.
+| | |
+|---|---|
+| **Auth** | None |
+| **Success** | `200` |
+
+```json
+{ "status": "ok" }
+```
+
+---
+
+### `GET /api/v1/me`
+
+| | |
+|---|---|
+| **Purpose** | Current user profile |
+| **Auth** | Required |
+| **Success** | `200` `UserResponse` |
+
+```json
+{
+  "id": 1,
+  "username": "demo_learner",
+  "avatar_url": null,
+  "created_at": "2026-08-13T12:00:00"
+}
+```
+
+| Error | Code |
+|---|---|
+| 404 | `USER_NOT_FOUND` |
+
+---
+
+### `GET /api/v1/me/stats`
+
+| | |
+|---|---|
+| **Purpose** | Authoritative gamification stats |
+| **Auth** | Required |
+| **Side effect** | Lazy heart regeneration may **commit** before response |
+| **Success** | `200` `UserStatsResponse` |
+
+```json
+{
+  "total_xp": 340,
+  "current_streak": 7,
+  "hearts": 4,
+  "max_hearts": 5,
+  "gems": 500,
+  "daily_goal": 30
+}
+```
+
+**Not exposed:** `daily_xp` (stored server-side; frontend daily-quest UI is placeholder).
+
+| Error | Code |
+|---|---|
+| 404 | `USER_STATS_NOT_FOUND` |
+
+---
+
+### `POST /api/v1/me/hearts/refill`
+
+| | |
+|---|---|
+| **Purpose** | Spend gems to refill hearts to max |
+| **Auth** | Required |
+| **Body** | None |
+| **Cost** | 350 gems (server-enforced) |
+| **Success** | `200` `UserStatsResponse` (updated) |
+
+| Error | Code |
+|---|---|
+| 409 | `HEARTS_ALREADY_FULL` |
+| 409 | `NOT_ENOUGH_GEMS` |
 
 ---
 
 ### `GET /api/v1/path`
 
-- **Purpose**: Retrieves the full course tree and user's progress.
-- **Authentication**: Required (`get_current_user`).
-- **Success (200)**: `PathResponse`
+| | |
+|---|---|
+| **Purpose** | Course tree merged with user skill progress |
+| **Auth** | Required |
+| **Success** | `200` `PathResponse` |
 
 ```json
 {
@@ -52,7 +150,8 @@ Malformed shapes return `422 INVALID_ANSWER_PAYLOAD`.
           "title": "Hiragana",
           "icon": "character",
           "status": "available",
-          "crown_level": 0
+          "crown_level": 0,
+          "lesson_id": 1
         }
       ]
     }
@@ -60,15 +159,20 @@ Malformed shapes return `422 INVALID_ANSWER_PAYLOAD`.
 }
 ```
 
+**Skill status values:** `locked`, `available`, `completed`.
+
+Each skill includes `lesson_id` — the primary lesson to start for that skill (lowest `order_index`). Clients must use this field for lesson links, not `skill.id`.
+
 ---
 
 ### `POST /api/v1/lessons/{lesson_id}/start`
 
-- **Purpose**: Starts or resumes a lesson attempt.
-- **Authentication**: Required.
-- **Path Parameters**: `lesson_id` (int).
-- **Data Safety Boundary**: The response MUST NOT expose `Exercise.correct_answer`.
-- **Success (200)**: `StartLessonResponse`
+| | |
+|---|---|
+| **Purpose** | Start or resume a lesson attempt |
+| **Auth** | Required |
+| **Path params** | `lesson_id` (int) |
+| **Success** | `200` `StartLessonResponse` |
 
 ```json
 {
@@ -86,15 +190,53 @@ Malformed shapes return `422 INVALID_ANSWER_PAYLOAD`.
 }
 ```
 
-- **Errors**: `403 SKILL_LOCKED`, `404 LESSON_NOT_FOUND`, `409 LESSON_HAS_NO_EXERCISES`, `409 CORRUPTED_LESSON_STATE`
+**Data safety:** `correct_answer` is **never** included in start response.
+
+**Behavior:**
+
+- If an `in_progress` attempt exists → resume it (same `attempt_id`, current cursor).
+- If latest attempt is `completed` or `failed` → create **new** `in_progress` attempt.
+- Concurrent starts → partial unique index + IntegrityError recovery → return winning attempt.
+
+| Error | Code |
+|---|---|
+| 403 | `SKILL_LOCKED` |
+| 404 | `LESSON_NOT_FOUND` |
+| 409 | `LESSON_HAS_NO_EXERCISES` |
+| 409 | `CORRUPTED_LESSON_STATE` |
+| 409 | `CORRUPTED_USER_STATS` |
 
 ---
 
 ### `POST /api/v1/lesson-attempts/{attempt_id}/answers`
 
-- **Purpose**: Submits an answer for the current exercise.
-- **Request Body**: `AnswerRequest` (see table above).
-- **Success (200)**: `AnswerResponse`
+| | |
+|---|---|
+| **Purpose** | Submit answer for current exercise |
+| **Auth** | Required + attempt ownership |
+| **Path params** | `attempt_id` (int) |
+| **Body** | `AnswerRequest` |
+
+```json
+{
+  "exercise_id": 1,
+  "answer": "あ"
+}
+```
+
+#### Answer payload shapes
+
+| Exercise type | `answer` JSON type | Example |
+|---|---|---|
+| `multiple_choice` | string | `"あ"` |
+| `translate` | string[] | `["ありがとう"]` |
+| `fill_blank` | string[] | `["り"]` |
+| `match_pairs` | object (pair id → right option id) | `{"p1": "r1", "p2": "r2"}` |
+| `type_answer` | string | `"a"` |
+
+Malformed client shapes → `422 INVALID_ANSWER_PAYLOAD`.
+
+**Success** `200` `AnswerResponse`:
 
 ```json
 {
@@ -106,17 +248,32 @@ Malformed shapes return `422 INVALID_ANSWER_PAYLOAD`.
 }
 ```
 
-Wrong answers that empty hearts return **HTTP 200** with `"lesson_failed": true` (not an error status).
+**Wrong answer:** HTTP 200, `correct: false`, cursor unchanged, heart −1 (if hearts > 0).
 
-- **Errors**: `404 ATTEMPT_NOT_FOUND`, `409 ATTEMPT_ALREADY_TERMINATED`, `409 EXERCISE_NOT_CURRENT`, …
+**Hearts exhausted:** HTTP 200, `lesson_failed: true`, attempt → `failed`. **Not** HTTP 403.
+
+| Error | Code |
+|---|---|
+| 403 | `ATTEMPT_FORBIDDEN` |
+| 404 | `ATTEMPT_NOT_FOUND` |
+| 409 | `ATTEMPT_ALREADY_TERMINATED` |
+| 409 | `EXERCISE_NOT_CURRENT` |
+| 409 | `EXERCISE_NOT_IN_LESSON` |
+| 409 | `EXERCISE_ALREADY_ANSWERED` |
+| 409 | `CORRUPTED_LESSON_STATE` |
+| 409 | `UNSUPPORTED_EXERCISE_TYPE` |
+| 422 | `INVALID_ANSWER_PAYLOAD` |
 
 ---
 
 ### `POST /api/v1/lesson-attempts/{attempt_id}/complete`
 
-- **Purpose**: Completes the lesson, updating XP, streak, and skill progress.
-- **Idempotency**: If `xp_awarded` is already set on the attempt, returns cached `xp_awarded` / `crown_earned` without double-awarding XP. **`total_xp` and `streak` are read from current `UserStats` on every response** (including retries).
-- **Success (200)**: `CompleteResponse`
+| | |
+|---|---|
+| **Purpose** | Finalize lesson; award XP, update streak, progress, unlock |
+| **Auth** | Required + attempt ownership |
+| **Body** | None |
+| **Success** | `200` `CompleteResponse` |
 
 ```json
 {
@@ -127,49 +284,32 @@ Wrong answers that empty hearts return **HTTP 200** with `"lesson_failed": true`
 }
 ```
 
----
+#### Idempotency
 
-### `GET /api/v1/me`
+- **Side effects (XP to UserStats):** awarded **at most once** per attempt; gated by `attempt.status == completed` and `xp_awarded`.
+- **Retry after completion:** returns cached `xp_awarded` and `crown_earned`; does **not** re-add XP.
+- **`total_xp` and `streak`:** read from current `UserStats` on every response, including retries — not a frozen snapshot.
+- **Concurrent in-flight completes:** conditional `try_complete_attempt` gate; loser polls briefly and returns cached completion when the winner commits (SQLite/threaded HTTP remains environment-limited).
 
-```json
-{
-  "id": 1,
-  "username": "demo_learner",
-  "avatar_url": null,
-  "created_at": "2026-08-13T12:00:00"
-}
-```
-
----
-
-### `GET /api/v1/me/stats`
-
-Lazy heart regeneration may commit before returning.
-
-```json
-{
-  "total_xp": 340,
-  "current_streak": 7,
-  "hearts": 4,
-  "max_hearts": 5,
-  "gems": 500,
-  "daily_goal": 30
-}
-```
-
----
-
-### `POST /api/v1/me/hearts/refill`
-
-Costs **350 gems**. Refills hearts to `max_hearts`.
-
-- **Errors**: `409 HEARTS_ALREADY_FULL`, `409 NOT_ENOUGH_GEMS`
+| Error | Code |
+|---|---|
+| 403 | `ATTEMPT_FORBIDDEN` |
+| 404 | `ATTEMPT_NOT_FOUND` |
+| 409 | `ATTEMPT_ALREADY_TERMINATED` |
+| 409 | `LESSON_INCOMPLETE` |
+| 409 | `CORRUPTED_LESSON_STATE` |
+| 409 | `CORRUPTED_USER_STATS` |
 
 ---
 
 ### `GET /api/v1/leaderboard`
 
-Sorted by `total_xp DESC`, tie-break `user_id ASC`.
+| | |
+|---|---|
+| **Purpose** | XP-ranked users |
+| **Auth** | Required |
+| **Sort** | `total_xp DESC`, tie-break `user_id ASC` |
+| **Success** | `200` `LeaderboardResponse` |
 
 ```json
 {
@@ -181,26 +321,43 @@ Sorted by `total_xp DESC`, tie-break `user_id ASC`.
       "avatar_url": null,
       "total_xp": 1200,
       "current_streak": 45
-    },
-    {
-      "rank": 3,
-      "user_id": 1,
-      "username": "demo_learner",
-      "avatar_url": null,
-      "total_xp": 340,
-      "current_streak": 7
     }
   ],
   "current_user_rank": 3
 }
 ```
 
-*(Illustrative — ranks reflect seeded demo data where `polyglot99` leads.)*
+---
+
+## Frontend Integration Map
+
+| Frontend call | Endpoint | Component |
+|---|---|---|
+| `meApi.getProfile()` | `GET /me` | `ProfileContent` |
+| `meApi.getStats()` | `GET /me/stats` | `UserStatsProvider`, `ProfileContent` |
+| `meApi.refillHearts()` | `POST /me/hearts/refill` | `ShopContent` |
+| `pathApi.getPath()` | `GET /path` | `LearningPath` |
+| `lessonApi.start(id)` | `POST /lessons/{id}/start` | `ApiLessonPlayer` |
+| `lessonApi.answer(id, body)` | `POST /lesson-attempts/{id}/answers` | `ApiLessonPlayer` |
+| `lessonApi.complete(id)` | `POST /lesson-attempts/{id}/complete` | `ApiLessonPlayer` |
+| `leaderboardApi.getLeaderboard()` | `GET /leaderboard` | `LeaderboardContent` |
+
+**Not called by frontend:** `/health-check` (scripts only).
+
+**Demo auth:** `lib/demoAuth.ts` writes `localStorage` but sends **no** auth headers. Backend always uses `DEFAULT_USER_ID=1`.
 
 ---
 
-### `GET /health-check`
+## Implementation Notes
 
-```json
-{ "status": "ok" }
-```
+Resolved gaps (verified in code/tests):
+
+| Area | Status |
+|---|---|
+| User DTO mapping | `UserService` returns explicit `UserResponse` / `UserStatsResponse` |
+| Skill → lesson routing | Path returns `lesson_id`; frontend links use it |
+| Concurrent complete | Conditional `try_complete_attempt` + idempotent cached response |
+| Heart regen on start | `start_lesson` calls `regenerate_hearts` before reporting hearts |
+| OpenAPI route errors | Domain errors not per-route in OpenAPI — consult `error-taxonomy.md` (intentional for demo) |
+
+Remaining optional gaps: expose `daily_xp` in API if daily-quest UI ships.

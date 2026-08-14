@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 from app.models.domain import Exercise, ExerciseType
-from app.core.exceptions import InvalidPayloadError
+from app.core.exceptions import InvalidPayloadError, ConflictError
 
 class AnswerEvaluator(ABC):
     @abstractmethod
@@ -39,7 +39,7 @@ class TypeAnswerEvaluator(AnswerEvaluator):
         
         submitted = submitted_answer.strip().lower()
         if not isinstance(exercise.correct_answer, list):
-            return False
+            raise ConflictError("CORRUPTED_LESSON_STATE")
         
         accepted = [str(ans).strip().lower() for ans in exercise.correct_answer]
         return submitted in accepted

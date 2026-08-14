@@ -12,6 +12,7 @@ import { BackendExerciseView } from "@/components/lesson/BackendExerciseView";
 import { useOptionalUserStats } from "@/components/providers/UserStatsProvider";
 import { lessonApi } from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/api-errors";
+import { isAnswerComplete } from "@/lib/lessonAnswerValidation";
 import type {
   AnswerRequest,
   CompleteResponse,
@@ -19,7 +20,7 @@ import type {
   StartLessonResponse,
 } from "@/lib/api/types";
 
-type LessonPhase = "loading" | "answering" | "submitting" | "feedback" | "complete" | "failed" | "error";
+type LessonPhase = "loading" | "answering" | "submitting" | "feedback" | "completing" | "complete" | "failed" | "error";
 
 type PlayerState = {
   phase: LessonPhase;
@@ -138,15 +139,14 @@ export function ApiLessonPlayer({ lessonId }: { lessonId: number }) {
   const exercise = state.exercises[state.exerciseIndex];
   const total = state.exercises.length;
   const progress = progressPercent(state.exerciseIndex, total, state.phase);
-  const locked = state.phase === "feedback" || state.phase === "submitting";
+  const locked =
+    state.phase === "feedback" ||
+    state.phase === "submitting" ||
+    state.phase === "completing";
 
   const canSubmit = useMemo(() => {
     if (state.phase !== "answering" || !exercise) return false;
-    if (state.draftAnswer === null) return false;
-    if (typeof state.draftAnswer === "string") return state.draftAnswer.trim().length > 0;
-    if (Array.isArray(state.draftAnswer)) return state.draftAnswer.length > 0;
-    if (typeof state.draftAnswer === "object") return Object.keys(state.draftAnswer).length > 0;
-    return false;
+    return isAnswerComplete(exercise, state.draftAnswer);
   }, [state.phase, state.draftAnswer, exercise]);
 
   const handleSubmit = useCallback(async () => {
@@ -195,6 +195,7 @@ export function ApiLessonPlayer({ lessonId }: { lessonId: number }) {
     if (state.phase !== "feedback" || state.attemptId === null) return;
 
     if (state.exerciseIndex >= total) {
+      setState((prev) => ({ ...prev, phase: "completing" }));
       try {
         const completeResult = await lessonApi.complete(state.attemptId);
         void refreshStats?.();
@@ -259,6 +260,7 @@ export function ApiLessonPlayer({ lessonId }: { lessonId: number }) {
 
   if (state.phase === "complete") {
     const xp = state.completeResult?.xp_awarded ?? 0;
+    const totalXp = state.completeResult?.total_xp ?? 0;
     const streak = state.completeResult?.streak ?? 0;
     const crown = state.completeResult?.crown_earned ?? false;
 
@@ -272,7 +274,7 @@ export function ApiLessonPlayer({ lessonId }: { lessonId: number }) {
           </div>
           <h1 className="text-3xl font-extrabold">Lesson complete!</h1>
           <p className="mt-3 text-[#afafaf]">
-            +{xp} XP · {streak} day streak
+            +{xp} XP · {totalXp.toLocaleString()} total XP · {streak} day streak
             {crown ? " · Crown earned!" : ""}
           </p>
           <Link
@@ -325,16 +327,23 @@ export function ApiLessonPlayer({ lessonId }: { lessonId: number }) {
   const displayExercise =
     exercise ?? state.exercises[Math.min(state.exerciseIndex, total - 1)];
 
+  const continueDisabled = state.phase === "completing";
+
   const footer =
-    state.phase === "feedback" ? (
+    state.phase === "feedback" || state.phase === "completing" ? (
       state.lastResult === "correct" ? (
-        <CorrectFeedbackBar message="Excellent!" onContinue={handleContinue} />
+        <CorrectFeedbackBar
+          message="Excellent!"
+          onContinue={handleContinue}
+          continueDisabled={continueDisabled}
+        />
       ) : (
         <IncorrectFeedbackBar
           romaji="Correct answer"
           japanese={formatCorrectAnswer(state.correctAnswer)}
           meaning="Keep going!"
           onContinue={handleContinue}
+          continueDisabled={continueDisabled}
         />
       )
     ) : (

@@ -137,6 +137,7 @@ class UserStats(Base):
     __table_args__ = (
         CheckConstraint("total_xp >= 0", name="chk_total_xp_positive"),
         CheckConstraint("hearts >= 0 AND hearts <= max_hearts", name="chk_hearts_bound"),
+        CheckConstraint("gems >= 0", name="chk_gems_positive"),
     )
 
 
