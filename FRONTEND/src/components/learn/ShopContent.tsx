@@ -127,7 +127,7 @@ function ShopItem({
   return (
     <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#131f24]">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-duo-dark-bg">
           {icon}
         </div>
         <div className="min-w-0">

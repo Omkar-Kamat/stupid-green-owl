@@ -98,7 +98,7 @@ function ProfileHeader({ username, joined }: { username: string; joined: string 
         </button>
 
         <div className="flex justify-center px-6 pb-8 pt-10">
-          <div className="relative flex h-[120px] w-[120px] items-center justify-center rounded-full border-2 border-dashed border-[#1cb0f6] bg-[#131f24]">
+          <div className="relative flex h-[120px] w-[120px] items-center justify-center rounded-full border-2 border-dashed border-[#1cb0f6] bg-duo-dark-bg">
             <div className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#1cb0f6]/20">
               <PlusIcon />
             </div>

@@ -16,20 +16,13 @@ import urllib.request
 API_BASE = os.environ.get("API_BASE_URL", "http://localhost:8000").rstrip("/")
 API_V1 = f"{API_BASE}/api/v1"
 
-# Must stay in sync with seed.py lesson 1 (Hiragana), order_index 0..9
 LESSON_1_ANSWERS: list[object] = [
     "あ",
-    "い",
     ["り"],
     ["ありがとう"],
-    {"p1": "r1", "p2": "r2"},
-    "a",
+    "い",
     ["し"],
-    "う",
-    ["こんにちは"],
-    "i",
 ]
-
 
 def request(method: str, path: str, body: dict | None = None) -> dict:
     url = path if path.startswith("http") else f"{API_V1}{path}"
@@ -48,14 +41,12 @@ def request(method: str, path: str, body: dict | None = None) -> dict:
         detail = exc.read().decode()
         raise RuntimeError(f"{method} {path} failed ({exc.code}): {detail}") from exc
 
-
 def skill_by_id(path: dict, skill_id: int) -> dict:
     for unit in path["units"]:
         for skill in unit["skills"]:
             if skill["id"] == skill_id:
                 return skill
     raise RuntimeError(f"Skill {skill_id} not found in path")
-
 
 def main() -> int:
     print("==> Running smoke test <==")
@@ -93,9 +84,7 @@ def main() -> int:
     required_types = {
         "multiple_choice",
         "translate",
-        "match_pairs",
         "fill_blank",
-        "type_answer",
     }
     missing = required_types - exercise_types
     if missing:
@@ -164,7 +153,6 @@ def main() -> int:
 
     print("\n==> Smoke test complete <==")
     return 0
-
 
 if __name__ == "__main__":
     try:

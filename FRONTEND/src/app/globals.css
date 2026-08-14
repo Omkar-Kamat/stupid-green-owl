@@ -33,33 +33,49 @@
 }
 
 @theme inline {
-  --color-duo-green: #4b4b4b;
-  --color-duo-green-dark: #3d3d3d;
-  --color-duo-green-darker: #333333;
+  --color-duo-green: var(--theme-duo-green);
+  --color-duo-green-dark: var(--theme-duo-green-dark);
+  --color-duo-green-darker: var(--theme-duo-green-darker);
   --color-duo-blue: #1cb0f6;
   --color-duo-blue-dark: #1899d6;
   --color-duo-gray: #4b4b4b;
   --color-duo-gray-light: #777777;
   --color-duo-gray-muted: #afafaf;
   --color-duo-gray-border: #e5e5e5;
-  --color-duo-dark-bg: #131f24;
-  --color-duo-dark-input: #202f36;
-  --color-duo-dark-border: #37464f;
-  --color-duo-learn-bg: #131f24;
-  --color-duo-text-primary: #ffffff;
-  --color-duo-text-secondary: #afafaf;
-  --color-duo-text-muted: #52656d;
+  --color-duo-dark-bg: var(--theme-duo-dark-bg);
+  --color-duo-dark-input: var(--theme-duo-dark-input);
+  --color-duo-dark-border: var(--theme-duo-dark-border);
+  --color-duo-learn-bg: var(--theme-duo-learn-bg);
+  --color-duo-text-primary: var(--theme-duo-text-primary);
+  --color-duo-text-secondary: var(--theme-duo-text-secondary);
+  --color-duo-text-muted: var(--theme-duo-text-muted);
   --font-duo: "din-round", "Nunito", sans-serif;
 }
 
+:root {
+  --theme-duo-green: #4b4b4b;
+  --theme-duo-green-dark: #3d3d3d;
+  --theme-duo-green-darker: #333333;
+  --theme-duo-dark-bg: #131f24;
+  --theme-duo-dark-input: #202f36;
+  --theme-duo-dark-border: #37464f;
+  --theme-duo-learn-bg: #131f24;
+  --theme-duo-text-primary: #ffffff;
+  --theme-duo-text-secondary: #afafaf;
+  --theme-duo-text-muted: #52656d;
+}
+
 html[data-theme="light"] {
-  --color-duo-dark-bg: #faf7f2;
-  --color-duo-dark-input: #ffffff;
-  --color-duo-dark-border: #e8dfd4;
-  --color-duo-learn-bg: #faf7f2;
-  --color-duo-text-primary: #4b4b4b;
-  --color-duo-text-secondary: #777777;
-  --color-duo-text-muted: #afafaf;
+  --theme-duo-green: #4b4b4b;
+  --theme-duo-green-dark: #3d3d3d;
+  --theme-duo-green-darker: #333333;
+  --theme-duo-dark-bg: #faf7f2;
+  --theme-duo-dark-input: #ffffff;
+  --theme-duo-dark-border: #e8dfd4;
+  --theme-duo-learn-bg: #faf7f2;
+  --theme-duo-text-primary: #4b4b4b;
+  --theme-duo-text-secondary: #777777;
+  --theme-duo-text-muted: #afafaf;
 }
 
 * {
@@ -74,7 +90,7 @@ body {
   margin: 0;
   font-family: "din-round", "Nunito", sans-serif;
   color: var(--color-duo-gray);
-  background: var(--color-duo-dark-bg);
+  background: var(--theme-duo-dark-bg);
   -webkit-font-smoothing: antialiased;
 }
 

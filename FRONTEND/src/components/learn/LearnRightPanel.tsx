@@ -62,7 +62,7 @@ function BronzeLeagueCard({
   return (
     <PanelCard>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="text-[15px] font-extrabold text-white">Your progress</h3>
+        <h3 className="text-[15px] font-extrabold text-duo-text-primary">Your progress</h3>
         <Link
           href="/learn/japanese/leaderboards"
           className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#1cb0f6] hover:underline"
@@ -83,10 +83,10 @@ function BronzeLeagueCard({
           />
         </div>
         <div className="min-w-0">
-          <p className="text-[15px] font-bold leading-snug text-white">
+          <p className="text-[15px] font-bold leading-snug text-duo-text-primary">
             {loading ? "Loading rank…" : totalXp !== undefined ? `Total XP: ${totalXp}` : "—"}
           </p>
-          <p className="mt-1 text-[13px] leading-snug text-[#afafaf]">
+          <p className="mt-1 text-[13px] leading-snug text-duo-text-secondary">
             Open leaderboards to see your league rank
           </p>
         </div>
@@ -105,7 +105,7 @@ function DailyQuestsCard({
   return (
     <PanelCard>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="text-[15px] font-extrabold text-white">Daily Goal</h3>
+        <h3 className="text-[15px] font-extrabold text-duo-text-primary">Daily Goal</h3>
         <Link
           href="/learn/japanese/quests"
           className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[#1cb0f6] hover:underline"
@@ -126,10 +126,10 @@ function DailyQuestsCard({
         />
 
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-bold text-white">
+          <p className="text-[15px] font-bold text-duo-text-primary">
             {loading ? "Loading…" : dailyGoal !== undefined ? `Daily goal: ${dailyGoal} XP` : "—"}
           </p>
-          <p className="mt-1 text-[13px] text-[#afafaf]">
+          <p className="mt-1 text-[13px] text-duo-text-secondary">
             Daily XP progress is tracked server-side
           </p>
         </div>

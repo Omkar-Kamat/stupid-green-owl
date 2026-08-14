@@ -108,7 +108,7 @@ export function LearningPath() {
                 }}
               >
                 {index === activeSkillIndex && (
-                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-[13px] font-extrabold uppercase tracking-wider text-[#6b6b6b]">
+                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-[13px] font-extrabold uppercase tracking-wider text-duo-text-secondary">
                     {index === 0 ? "Start" : "Continue"}
                   </span>
                 )}
@@ -154,7 +154,7 @@ function UnitBanner({
 }) {
   return (
     <div className="px-4 pt-8 pb-4 md:px-6">
-      <div className="w-full rounded-2xl bg-duo-green shadow-[0_4px_0_#3d3d3d]">
+      <div className="w-full rounded-2xl bg-duo-green shadow-[0_4px_0_var(--color-duo-green-dark)]">
         <div className="flex items-start justify-between gap-4 px-5 py-5 md:px-6">
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-[13px] font-extrabold uppercase tracking-wider text-white/75">
@@ -235,7 +235,7 @@ function SkillPathNode({
             cy="44"
             r={RING_RADIUS}
             fill="none"
-            stroke="#37464f"
+            stroke="var(--color-duo-dark-border)"
             strokeWidth="6"
           />
           {state === "active" && (
@@ -244,7 +244,7 @@ function SkillPathNode({
               cy="44"
               r={RING_RADIUS}
               fill="none"
-              stroke="#6b6b6b"
+              stroke="var(--color-duo-blue)"
               strokeWidth="6"
               strokeDasharray={`${filled} ${RING_CIRCUMFERENCE}`}
               strokeLinecap="round"
@@ -256,22 +256,22 @@ function SkillPathNode({
               cy="44"
               r={RING_RADIUS}
               fill="none"
-              stroke="#6b6b6b"
+              stroke="var(--color-duo-blue)"
               strokeWidth="6"
             />
           )}
         </svg>
       )}
       <span
-        className={`relative flex h-[70px] w-[70px] items-center justify-center rounded-full border-b-[6px] shadow-[0_4px_0_#3d3d3d] transition-transform active:translate-y-[2px] active:border-b-[4px] active:shadow-none ${
+        className={`relative flex h-[70px] w-[70px] items-center justify-center rounded-full border-b-[6px] transition-transform active:translate-y-[2px] active:border-b-[4px] active:shadow-none ${
           state === "active"
-            ? "border-duo-green-dark bg-duo-green hover:scale-105"
+            ? "border-duo-green-dark bg-duo-green shadow-[0_4px_0_var(--color-duo-green-dark)] hover:scale-105"
             : state === "complete"
-              ? "border-[#3d3d3d] bg-duo-green hover:scale-105"
-              : "border-[#2b3a40] bg-[#37464f] shadow-[0_4px_0_#2b3a40]"
+              ? "border-duo-green-dark bg-duo-green shadow-[0_4px_0_var(--color-duo-green-dark)] hover:scale-105"
+              : "border-duo-dark-bg bg-duo-dark-border shadow-[0_4px_0_var(--color-duo-dark-bg)]"
         }`}
       >
-        <StarIcon muted={state === "locked"} />
+        <StarIcon muted={state === "locked"} isActive={state !== "locked"} />
       </span>
     </>
   );
@@ -298,20 +298,19 @@ function SkillPathNode({
     <button
       type="button"
       disabled
-      className="flex h-[70px] w-[70px] items-center justify-center rounded-full border-b-[6px] border-[#2b3a40] bg-[#37464f] shadow-[0_4px_0_#2b3a40]"
+      className="flex h-[70px] w-[70px] items-center justify-center rounded-full border-b-[6px] border-duo-dark-bg bg-duo-dark-border shadow-[0_4px_0_var(--color-duo-dark-bg)]"
       aria-label={`${skill.title} (locked)`}
     >
-      <StarIcon muted />
+      <StarIcon muted isActive={false} />
     </button>
   );
 }
 
-function StarIcon({ muted = false }: { muted?: boolean }) {
-  const fill = muted ? "#52656d" : "white";
+function StarIcon({ muted = false, isActive = false }: { muted?: boolean; isActive?: boolean }) {
   return (
     <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
       <path
-        fill={fill}
+        fill={muted ? "var(--color-duo-text-muted)" : (isActive ? "#ffffff" : "var(--color-duo-text-primary)")}
         d="M12 2l2.9 6.5L22 9.5l-5 4.8 1.2 6.9L12 17.8 5.8 21.2 7 14.3 2 9.5l7.1-1L12 2z"
       />
     </svg>

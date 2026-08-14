@@ -97,7 +97,7 @@ function NavIcon({ src, active }: { src: string; active?: boolean }) {
 
 function ProfileIcon({ active }: { active?: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7 shrink-0" fill={active ? "#ff86d0" : "#52656d"} aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-7 w-7 shrink-0" fill={active ? "#ff86d0" : "var(--color-duo-text-muted)"} aria-hidden="true">
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4 3.6-6 8-6s8 2 8 6v1H4v-1z" />
     </svg>
@@ -105,7 +105,7 @@ function ProfileIcon({ active }: { active?: boolean }) {
 }
 
 function MoreIcon({ active }: { active?: boolean }) {
-  const fill = active ? "#1cb0f6" : "#52656d";
+  const fill = active ? "#1cb0f6" : "var(--color-duo-text-muted)";
   return (
     <svg viewBox="0 0 24 24" className="h-7 w-7 shrink-0" aria-hidden="true">
       {[6, 12, 18].map((cx) => (

@@ -1,11 +1,17 @@
+"use client";
+
+import { useOptionalUserStats } from "@/components/providers/UserStatsProvider";
+
 export function QuestsContent() {
+  const { stats, loading } = useOptionalUserStats() ?? {};
+
   return (
     <div className="mx-auto w-full max-w-[640px] px-4 pb-16 pt-6 md:px-6">
       <WelcomeBanner />
 
       <div className="mt-8">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-[22px] font-extrabold text-white">Daily Quests</h2>
+          <h2 className="text-[22px] font-extrabold text-duo-text-primary">Daily Quests</h2>
           <div className="flex items-center gap-1.5 text-[13px] font-extrabold uppercase tracking-wide text-[#ffc800]">
             <ClockIcon />
             23 hours
@@ -13,7 +19,11 @@ export function QuestsContent() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <DailyQuestCard />
+          {loading ? (
+            <p className="text-duo-text-secondary">Loading quests...</p>
+          ) : stats ? (
+            <DailyQuestCard dailyGoal={stats.daily_goal} />
+          ) : null}
           <LockedQuestCard />
         </div>
       </div>
@@ -29,7 +39,7 @@ function WelcomeBanner() {
           <h1 className="text-[24px] font-extrabold text-white md:text-[28px]">
             Welcome!
           </h1>
-          <p className="mt-2 text-[15px] font-bold leading-snug text-white/90 md:text-[16px]">
+          <p className="mt-2 text-[15px] font-bold leading-snug text-white md:text-[16px]">
             Complete quests to earn rewards! Quests refresh every day.
           </p>
         </div>
@@ -59,7 +69,7 @@ function WelcomeBanner() {
   );
 }
 
-function DailyQuestCard() {
+function DailyQuestCard({ dailyGoal }: { dailyGoal: number }) {
   return (
     <div className="rounded-2xl border-2 border-duo-dark-border bg-duo-dark-input p-5">
       <div className="flex items-center gap-4">
@@ -74,13 +84,13 @@ function DailyQuestCard() {
         />
 
         <div className="min-w-0 flex-1">
-          <p className="mb-3 text-[17px] font-bold text-white">Earn 10 XP</p>
+          <p className="mb-3 text-[17px] font-bold text-duo-text-primary">Earn {dailyGoal} XP</p>
 
           <div className="flex items-center">
             <div className="relative h-6 min-w-0 flex-1 overflow-hidden rounded-full bg-[#4a4020]">
               <div className="absolute inset-0 rounded-full bg-[#ffc800]" />
               <span className="absolute inset-0 flex items-center justify-center text-[13px] font-bold text-[#a56600]">
-                10 / 10
+                0 / {dailyGoal}
               </span>
             </div>
 
@@ -103,10 +113,10 @@ function DailyQuestCard() {
 function LockedQuestCard() {
   return (
     <div className="flex items-center gap-4 rounded-2xl border-2 border-duo-dark-border bg-duo-dark-input p-5">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center text-[#52656d]">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center text-duo-text-muted">
         <LockIcon />
       </div>
-      <p className="text-[17px] font-bold text-[#52656d]">More quests unlock soon</p>
+      <p className="text-[17px] font-bold text-duo-text-muted">More quests unlock soon</p>
     </div>
   );
 }

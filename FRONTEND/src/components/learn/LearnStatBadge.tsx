@@ -22,7 +22,7 @@ export function LearnStatIcon({
 export function LearnStatBadge({
   iconSrc,
   value,
-  color = "text-white",
+  color = "text-duo-text-primary",
   iconClassName = "h-7 w-7",
 }: {
   iconSrc: string;
@@ -40,7 +40,7 @@ export function LearnStatBadge({
 
 export function LanguagesLearningBadge({ count }: { count: number }) {
   return (
-    <div className="flex items-center gap-2 text-[15px] font-bold text-white">
+    <div className="flex items-center gap-2 text-[15px] font-bold text-duo-text-primary">
       <img
         src="/flags/edea4fa18ff3e7d8c0282de3f102aaed.svg"
         alt="Japanese"

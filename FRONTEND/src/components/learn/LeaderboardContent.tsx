@@ -230,7 +230,7 @@ function UserAvatar({
   if (isCurrentUser) {
     return (
       <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-[#52656d] bg-[#202f36]">
-        <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#131f24] bg-[#58cc02]" />
+        <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-duo-dark-bg bg-[#58cc02]" />
       </div>
     );
   }
