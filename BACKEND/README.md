@@ -150,6 +150,8 @@ Deployment must not rely on the local SQLite file being pre-populated. Startup s
 
 **Frontend**: Set `NEXT_PUBLIC_API_URL` to the deployed backend origin. Without it, the Next.js client falls back to `http://localhost:8000`.
 
+**CORS**: Set `CORS_ORIGINS` to a JSON array that includes your deployed frontend origin (for example `["https://your-app.vercel.app"]`). The default `["http://localhost:3000"]` only allows local development; a hosted frontend on a different origin will be blocked until this is updated.
+
 ## Known Limitations
 - The `type_answer` evaluator currently uses strict string equality. NLP/Levenshtein distance matching would be required for a production typo-forgiving experience.
 - Leaderboard uses a direct `ORDER BY total_xp DESC` query which scales poorly. A real system would use a Redis Sorted Set (ZSET).

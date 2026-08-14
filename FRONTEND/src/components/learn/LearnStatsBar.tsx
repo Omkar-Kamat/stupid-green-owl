@@ -31,6 +31,7 @@ export function LearnStatsBar({ className = "" }: { className?: string }) {
   }
 
   const streak = loading ? "…" : stats ? String(stats.current_streak) : "—";
+  const xp = loading ? "…" : stats ? String(stats.total_xp) : "—";
   const gems = loading ? "…" : stats ? String(stats.gems) : "—";
   const hearts = loading ? "…" : stats ? String(stats.hearts) : "—";
 
@@ -41,6 +42,11 @@ export function LearnStatsBar({ className = "" }: { className?: string }) {
         iconSrc={LEARN_STAT_ICONS.streak}
         value={streak}
         color="text-[#ff9600]"
+      />
+      <LearnStatBadge
+        iconSrc={LEARN_STAT_ICONS.xp}
+        value={xp}
+        color="text-[#ffc800]"
       />
       <LearnStatBadge
         iconSrc={LEARN_STAT_ICONS.gem}

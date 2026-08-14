@@ -2,6 +2,7 @@
 
 export const LEARN_STAT_ICONS = {
   streak: "/illustrations/streak.svg",
+  xp: "/illustrations/daily-quest-lightning.svg",
   gem: "/illustrations/gem.svg",
   heart: "/illustrations/heart.svg",
 } as const;

@@ -14,7 +14,7 @@ Open [http://localhost:3000/learn/japanese](http://localhost:3000/learn/japanese
 
 ## Backend integration
 
-The production learner journey uses **`ApiLessonPlayer`** at `/lesson/[lessonId]`, wired to the FastAPI backend via `src/lib/api/`.
+The learner journey uses **`ApiLessonPlayer`** at `/lesson/[lessonId]`, wired to the FastAPI backend via `src/lib/api/`.
 
 | Variable | Purpose |
 |---|---|
@@ -22,14 +22,9 @@ The production learner journey uses **`ApiLessonPlayer`** at `/lesson/[lessonId]
 
 **Deploy:** set `NEXT_PUBLIC_API_URL` to your deployed backend URL. Without it, the client falls back to localhost.
 
-## Demo vs prototype routes
+## Assumptions
 
-| Route | Data source |
-|---|---|
-| `/learn/japanese`, `/lesson/[id]`, profile, shop, leaderboard | Live backend API |
-| `/lesson/listening/*`, `/lesson/translate/*`, `/lesson/meaning/*` | Local UI prototypes (`LessonPlayer` + mock exercises) |
-
-Auth is mocked server-side (`DEFAULT_USER_ID=1`); the login page writes a local demo session only.
+Authentication is mocked for this assignment. The backend injects `DEFAULT_USER_ID=1` on all protected routes; no JWT or session token is required. The `/login` page writes a local demo session only — there is no route guard, and you can navigate directly to `/learn/japanese` without signing in.
 
 ## Verification
 

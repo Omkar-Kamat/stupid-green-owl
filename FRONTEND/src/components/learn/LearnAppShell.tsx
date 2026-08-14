@@ -1,3 +1,4 @@
+import { LearnMobileNav } from "@/components/learn/LearnMobileNav";
 import { LearnRightPanel } from "@/components/learn/LearnRightPanel";
 import { LearnSidebar } from "@/components/learn/LearnSidebar";
 import { LearnStatsBar } from "@/components/learn/LearnStatsBar";
@@ -20,7 +21,7 @@ export function LearnAppShell({
           <LearnStatsBar />
         </header>
 
-        <div className="flex flex-1 justify-center overflow-y-auto px-4 pb-8 lg:px-8">
+        <div className="flex flex-1 justify-center overflow-y-auto px-4 pb-24 md:pb-8 lg:px-8">
           <div className="flex w-full max-w-[1169px]">
             <main className="min-w-0 flex-1 overflow-x-hidden">
               {children}
@@ -32,6 +33,8 @@ export function LearnAppShell({
           </div>
         </div>
       </div>
+
+      <LearnMobileNav activeNav={activeNav} />
     </div>
   );
 }

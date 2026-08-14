@@ -1,22 +1,13 @@
 import Link from "next/link";
+import { LEARN_NAV_ITEMS } from "@/components/learn/learnNavConfig";
 import { ThemeToggleNavItem } from "@/components/theme/ThemeToggleNavItem";
 
 type NavIconProps = { active?: boolean };
 
-type NavItem =
-  | { id: string; label: string; src: string; href?: string }
+type SidebarOnlyItem =
   | { id: string; label: string; icon: (props: NavIconProps) => React.ReactElement; href?: string };
 
-const NAV_ITEMS: NavItem[] = [
-  { id: "learn", label: "Learn", src: "/illustrations/nav/learn.svg", href: "/learn/japanese" },
-  { id: "characters", label: "Characters", src: "/illustrations/nav/characters.svg", href: "/learn/japanese/characters" },
-  { id: "leaderboards", label: "Leaderboards", src: "/illustrations/nav/leaderboards.svg", href: "/learn/japanese/leaderboards" },
-  { id: "quests", label: "Quests", src: "/illustrations/nav/quests.svg", href: "/learn/japanese/quests" },
-  { id: "shop", label: "Shop", src: "/illustrations/nav/shop.svg", href: "/learn/japanese/shop" },
-  { id: "profile", label: "Profile", icon: ProfileIcon, href: "/learn/japanese/profile" },
-];
-
-const MORE_ITEM: NavItem = { id: "more", label: "More", icon: MoreIcon };
+const MORE_ITEM: SidebarOnlyItem = { id: "more", label: "More", icon: MoreIcon };
 
 export function LearnSidebar({ activeNav = "learn" }: { activeNav?: string }) {
   return (
@@ -31,7 +22,7 @@ export function LearnSidebar({ activeNav = "learn" }: { activeNav?: string }) {
       </div>
 
       <nav className="flex flex-col gap-0.5 px-3 pt-2">
-        {NAV_ITEMS.map((item) => renderNavItem(item, activeNav))}
+        {LEARN_NAV_ITEMS.map((item) => renderNavItem(item, activeNav))}
         <ThemeToggleNavItem />
         {renderNavItem(MORE_ITEM, activeNav)}
       </nav>
@@ -39,8 +30,12 @@ export function LearnSidebar({ activeNav = "learn" }: { activeNav?: string }) {
   );
 }
 
-function renderNavItem(item: NavItem, activeNav: string) {
-  const { id, label, href } = item;
+function renderNavItem(
+  item: (typeof LEARN_NAV_ITEMS)[number] | SidebarOnlyItem,
+  activeNav: string,
+) {
+  const { id, label } = item;
+  const href = "href" in item ? item.href : undefined;
   const active = id === activeNav;
   const className = `flex items-center gap-4 rounded-2xl px-4 py-3 text-left text-[15px] font-bold uppercase tracking-wide transition-colors ${
     active
@@ -50,11 +45,13 @@ function renderNavItem(item: NavItem, activeNav: string) {
 
   const content = (
     <>
-      {"src" in item ? (
+      {"useProfileIcon" in item && item.useProfileIcon ? (
+        <ProfileIcon active={active} />
+      ) : "src" in item && item.src ? (
         <NavIcon src={item.src} active={active} />
-      ) : (
+      ) : "icon" in item ? (
         <item.icon active={active} />
-      )}
+      ) : null}
       {label}
     </>
   );
